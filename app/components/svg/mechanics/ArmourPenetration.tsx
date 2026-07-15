@@ -1,0 +1,29 @@
+import React from "react";
+import { Svg } from "@/app/types/Svg";
+
+const ArmourPenetration: React.FC<Svg> = ({ className }) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 23.84 23.84"
+      className={className}
+    >
+      <g transform="translate(0 1.425)">
+        <g>
+          <g>
+            <polygon
+              fill="currentColor"
+              points="16.64 9.72 12.27 8.44 15.05 4.83 10.76 6.36 10.89 1.81 8.32 5.56 5.75 1.81 5.87 6.36 1.59 4.83 4.36 8.44 0 9.72 4.36 11.01 1.59 14.61 5.87 13.09 5.75 17.63 8.32 13.88 10.89 17.63 10.76 13.09 15.05 14.61 12.27 11.01 16.64 9.72"
+            />
+            <path
+              fill="currentColor"
+              d="M16.08,0H11.94L11.8,4.93l6.1-2.17L14,7.89l6.21,1.83L14,11.55l3.95,5.14-6.1-2.18.12,4.54A18,18,0,0,0,16.08,21c6.41-2.16,7.76-5.31,7.76-8V0Z"
+            />
+          </g>
+        </g>
+      </g>
+    </svg>
+  );
+};
+
+export default ArmourPenetration;

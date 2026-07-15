@@ -10,6 +10,7 @@ import ChaosDemons from "@/app/components/svg/ChaosDemons";
 import ChaosSpaceMarines from "@/app/components/svg/ChaosSpaceMarines";
 import DeathGuard from "@/app/components/svg/DeathGuard";
 import Drukhari from "@/app/components/svg/Drukhari";
+import EmperorsChildren from "@/app/components/svg/EmperorsChildren";
 import GenestealerCults from "@/app/components/svg/GenestealerCults";
 import GrayKnights from "@/app/components/svg/GrayKnights";
 import LeaguesOfVotann from "@/app/components/svg/LeaguesOfVotann";
@@ -42,6 +43,7 @@ const FactionSvgResolver: React.FC<{
     csm: ChaosSpaceMarines,
     dg: DeathGuard,
     dru: Drukhari,
+    ec: EmperorsChildren,
     gc: GenestealerCults,
     gk: GrayKnights,
     lov: LeaguesOfVotann,
