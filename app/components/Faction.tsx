@@ -4,11 +4,13 @@ import useFactionStore from "@/app/store/factionStore";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
 
 const Faction: React.FC<{ factionData: any }> = ({ factionData }) => {
-  const setFaction = useFactionStore((store) => store.setFaction);
+  const setFaction = useFactionStore((store: any) => store.setFaction);
 
   return (
+    // relative anchors the absolute symbol here; a % width would resolve
+    // against the track, whose width these cards define.
     <div
-      className={`flex h-[90%] min-w-[30%] mx-10 my-auto top-0 bottom-0 text-white border border-white justify-center bg-cover bg-center cursor-pointer hover:border-red-500`}
+      className={`relative flex h-[90%] w-[30vw] shrink-0 mx-10 my-auto text-white border border-white justify-center bg-cover bg-center cursor-pointer hover:border-red-500`}
       onClick={() => setFaction(factionData)}
     >
       <FactionSvgResolver

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=New+Amsterdam&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=New+Amsterdam&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +7,10 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+
+  /* Fallback for anything outside a faction wrapper: an unset --accent
+     renders black on black rather than failing visibly. */
+  --accent: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,5 +24,103 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* Wahapedia rules text: its stylesheet is not loaded, so the classes it
+   marks up are styled here. */
+@layer components {
+  .rich {
+    @apply text-sm leading-relaxed text-white/80;
+  }
+
+  /* Flavour prose. Unstyled it is identical to the rules text. */
+  .rich .legend,
+  .rich .legend2,
+  .rich .ShowFluff {
+    @apply my-3 border-l-2 pl-3 italic text-white/60;
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  /* kwb = keyword bold: every game keyword is already marked up for us. */
+  .rich .kwb,
+  .rich .kwbu,
+  .rich .kwb2,
+  .rich .kwbo {
+    @apply font-bold uppercase text-[color:var(--accent)];
+  }
+
+  .rich .kwbu {
+    @apply underline;
+  }
+
+  .rich b,
+  .rich strong {
+    @apply font-bold text-white;
+  }
+
+  /* The wrapper owns the underline: kwbu would underline each word and skip
+     the spaces between them. */
+  .rich [class*="tooltip"],
+  .rich .rule-ref {
+    @apply cursor-help underline decoration-dotted underline-offset-4;
+    text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  .rich [class*="tooltip"]:hover,
+  .rich .rule-ref:hover {
+    text-decoration-color: var(--accent);
+  }
+
+  .rich [class*="tooltip"] .kwbu,
+  .rich [class*="tooltip"] .tt {
+    @apply no-underline;
+  }
+
+  /* Cross-references to core rules, which open on Wahapedia. */
+  .rich a {
+    @apply underline decoration-dotted underline-offset-2;
+    @apply transition-colors hover:text-[color:var(--accent)];
+  }
+
+  .rich p,
+  .rich div {
+    @apply mb-2;
+  }
+
+  .rich ul,
+  .rich ol {
+    @apply mb-2 list-outside pl-5;
+  }
+
+  .rich ul {
+    @apply list-disc;
+  }
+
+  .rich ol {
+    @apply list-decimal;
+  }
+
+  .rich table {
+    @apply my-3 w-full border-collapse text-xs;
+  }
+
+  .rich td,
+  .rich th {
+    @apply border border-white/15 px-2 py-1 align-top;
+  }
+
+  .rich th {
+    @apply bg-white/5 font-semibold text-white;
+  }
+
+  /* Must stay last: equal specificity to the .rich rules above, so source
+     order is what makes these win. */
+  .rich-panel {
+    @apply text-panel-body text-white/80;
+  }
+
+  .rich-panel table {
+    @apply text-sm;
   }
 }

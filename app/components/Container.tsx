@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
-import Faction from "@/app/components/Faction";
-import CarouselWrapper from "@/app/components/CarouselWrapper";
+import FactionSelect from "@/app/components/factions/FactionSelect";
 import useFactionStore from "@/app/store/factionStore";
 import Navbar from "@/app/components/Navbar";
 import Datasheets from "@/app/components/datasheets/Datasheets";
@@ -35,17 +34,14 @@ const Container: React.FC<{ data: any }> = ({ data }) => {
 
   const isDatasheetSet = () => faction && datasheets.length > 0;
 
+  if (!faction) {
+    return <FactionSelect factions={data} />;
+  }
+
   return (
     <div className={"flex justify-center min-w-full h-screen"}>
-      {!faction && (
-        <CarouselWrapper>
-          {data.map((e: any, k: number) => {
-            return <Faction factionData={e} key={k} />;
-          })}
-        </CarouselWrapper>
-      )}
       <div className={"flex flex-col min-w-full"}>
-        {faction && <Navbar key={"nav"} />}
+        <Navbar key={"nav"} />
         {isDatasheetSet() && <Datasheets key={datasheets.length} />}
       </div>
     </div>
