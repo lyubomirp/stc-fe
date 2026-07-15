@@ -6,12 +6,12 @@ interface FactionStore {
   setFaction: (faction: any) => void;
 }
 
-const useFactionStore = create<any>(
+const useFactionStore = create<FactionStore>()(
   persist(
     (set) => ({
       faction: null,
       setFaction: (newFaction: any) =>
-        set((state: any) => {
+        set((state) => {
           if (newFaction !== state.faction) {
             return { faction: newFaction };
           }
@@ -19,9 +19,7 @@ const useFactionStore = create<any>(
           return { faction: state.faction };
         }),
     }),
-    {
-      name: "faction-storage", // name of the item in the storage (must be unique)
-    },
+    { name: "faction-storage" },
   ),
 );
 
