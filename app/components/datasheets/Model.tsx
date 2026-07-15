@@ -65,12 +65,20 @@ const Model: React.FC = () => {
     <div className={"flex flex-col mt-24 gap-32 col-span-1"}>
       <div className={"relative flex flex-row self-start"}>
         {model.invSv !== "-" && (
-          <div className={"flex group justify-center self-start h-32"}>
+          <div className={"relative flex group justify-center self-start h-32"}>
             <Shield className={"fill-white w-16 h-16 self-center"} />
             <span
               className={"absolute text-2xl self-center font-raleway"}
             >{`${model.invSv}+`}</span>
-            {/*<Tooltip tooltipTitle={"invulnerability save"} />*/}
+            <span
+              className={
+                "pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 " +
+                "-translate-x-1/2 whitespace-nowrap rounded-sm bg-white px-1 " +
+                "text-sm text-black opacity-0 transition-opacity group-hover:opacity-100"
+              }
+            >
+              Invulnerability save
+            </span>
           </div>
         )}
         <h2 className={"font-bold text-5xl font-amsterdam my-10"}>
