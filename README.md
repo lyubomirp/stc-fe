@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# STC — Standard Template Construct (frontend)
 
-## Getting Started
+The web client for [STC](https://github.com/lyubomirp/stc-api): browse Warhammer
+40,000 factions, datasheets, weapon profiles, stratagems and abilities. Talks to
+the STC API, which mirrors the [Wahapedia](https://wahapedia.ru) data exports
+into Postgres.
 
-First, run the development server:
+Unofficial and non-commercial. Not affiliated with or endorsed by Games
+Workshop. Warhammer 40,000 and all associated names, logos and iconography are
+trademarks of Games Workshop Limited.
+
+## Tech stack
+
+|           |                                     |
+| --------- | ----------------------------------- |
+| Framework | Next.js 14 (App Router), React 18   |
+| Styling   | Tailwind CSS 3                      |
+| State     | Zustand (persisted to localStorage) |
+| Language  | TypeScript 5                        |
+
+## Getting started
+
+**Prerequisites:** Node.js, and the STC API running on port 3000.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The API is expected at `http://localhost:3000`. Since it holds that port, Next
+will offer the next free one for the client.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Useful routes:
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+- `/` — faction picker
+- `/icons` — every faction and mechanic icon rendered at a uniform size, for
+  checking visual consistency
 
-## Learn More
+## Icons
 
-To learn more about Next.js, take a look at the following resources:
+Faction and mechanic icons are SVGs rendered as React components under
+`app/components/svg/`. They are normalised on import: fixed `width`/`height`
+attributes stripped so CSS controls size, and fills mapped to `currentColor`
+so they inherit text colour. Mechanic icons are additionally centred on a
+square canvas, so one class renders them all at the same visual size.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`MechanicSvgResolver` is keyed by the API's own field names (`m`, `t`, `sv`,
+`w`, `ld`, `oc`, `a`, `bs`, `ws`, `s`, `ap`, `d`, …) rather than by artwork
+filename.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### Attribution
 
-## Deploy on Vercel
+Some icons are derived from these projects, with thanks:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- [Warhammer40kGroup/wh40k-icon](https://github.com/Warhammer40kGroup/wh40k-icon)
+  — faction and chapter iconography
+- [Locequen/40k-Data-Card](https://github.com/Locequen/40k-Data-Card)
+  — datasheet and weapon mechanic iconography
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Neither project declares a license. They are used here in good faith for a
+non-commercial fan project, and the underlying iconography is the intellectual
+property of Games Workshop. If you maintain either project and would rather
+these were not used, open an issue and they will be removed.
+
+## Authors
+
+- Lyubomir Petkov
+- Claude (Anthropic)
+
+## License
+
+MIT — covering this project's own source only, not the game data or
+iconography referenced above.
