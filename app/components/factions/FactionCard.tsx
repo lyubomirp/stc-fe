@@ -42,11 +42,17 @@ const FactionCard: React.FC<{
         {factionData.name}
       </span>
 
+      {/* Active has to restate the hover treatment rather than rely on it:
+          otherwise the icon drops back to 0.07 the moment the mouse leaves a
+          card whose panel is still open. */}
       <FactionSvgResolver
         factionId={factionData.id}
         className={
           "pointer-events-none absolute -right-3 bottom-2 h-24 w-24 " +
-          "fill-white opacity-[0.07] transition-all duration-300 " +
+          "transition-all duration-300 " +
+          (active
+            ? "fill-[var(--accent)] opacity-70 scale-105 "
+            : "fill-white opacity-[0.07] ") +
           "group-hover:fill-[var(--accent)] group-hover:opacity-70 " +
           "group-hover:scale-105"
         }
