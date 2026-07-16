@@ -24,7 +24,7 @@ const FactionSelect: React.FC<{ factions: any[] }> = ({ factions }) => {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/85 via-black/75 to-black" />
 
       <div className="relative flex min-h-screen w-full flex-col">
-        <TopNav active={"Factions"} />
+        <TopNav />
 
         <header className="px-8 pb-10 pt-6">
           <span className="flex items-center gap-2 text-hud text-white/40">
