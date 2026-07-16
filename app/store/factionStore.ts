@@ -9,7 +9,6 @@ export interface Faction {
 
 interface FactionStore {
   faction: Faction | null;
-  /** A faction keyword (e.g. "Ultramarines"), not a faction of its own. */
   subfaction: string | null;
   setFaction: (faction: Faction | null) => void;
   setSubfaction: (subfaction: string | null) => void;
@@ -20,8 +19,7 @@ const useFactionStore = create<FactionStore>()(
     (set) => ({
       faction: null,
       subfaction: null,
-      // Subfactions are keywords of one faction, so a faction change always
-      // invalidates them -- Ultramarines cannot survive a switch to Orks.
+      // A sub-faction is a keyword of one faction, so a change invalidates it.
       setFaction: (faction) =>
         set((state) =>
           faction?.id === state.faction?.id

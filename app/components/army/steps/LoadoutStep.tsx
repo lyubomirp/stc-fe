@@ -3,8 +3,7 @@ import React, { useState } from "react";
 import StepHeader from "@/app/components/army/steps/StepHeader";
 import { accentFade, ON_ACCENT } from "@/app/data/factionColors";
 
-// Mock, straight from the design. Real values come from the datasheet,
-// wargear and options endpoints.
+// Mock: not wired to the datasheet, wargear or options endpoints yet.
 const STATS = [
   { k: "M", v: '6"' },
   { k: "T", v: "4" },

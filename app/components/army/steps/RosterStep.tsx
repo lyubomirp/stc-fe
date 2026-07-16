@@ -11,18 +11,15 @@ export interface RosterItem {
   name: string;
   role: string | null;
   costs: CostTier[];
-  /** Which cost option is selected. Model count cannot identify one. */
   costLine: string | null;
   modelCount: number;
   pts: number | null;
 }
 
 interface CostTier {
-  /** The datasheets_models_cost line -- the identity of this option. */
   line: string;
   models: number;
   pts: number;
-  /** "3 Wolf Guard Headtakers and 3 Hunting Wolves" */
   label: string;
 }
 
@@ -30,15 +27,13 @@ interface Unit {
   id: string;
   name: string;
   role: string | null;
-  /** Cheapest tier first. Comes down with the list, so no per-unit fetch. */
   costs: CostTier[];
 }
 
 const TICKS = 44;
 
-// Legacy only: rosters saved before costLine existed carry a model count, and
-// a count is ambiguous -- 14 datasheets price two compositions at the same one.
-// Quote the higher, matching the API.
+// Legacy rosters carry only a model count, which is ambiguous. Must keep
+// quoting the higher tier, matching priceAt in the API's utils/costs.
 const priceByCount = (
   tiers: CostTier[],
   modelCount: number,
@@ -61,7 +56,6 @@ const RosterStep: React.FC<{
   onName: (name: string) => void;
   roster: RosterItem[];
   onRoster: (roster: RosterItem[]) => void;
-  /** Saved units awaiting cost tiers, when editing an existing roster. */
   pendingUnits:
     | { datasheetId: string; costLine: string | null; modelCount: number }[]
     | null;
@@ -93,8 +87,6 @@ const RosterStep: React.FC<{
   const [units, setUnits] = useState<Unit[]>([]);
   const [query, setQuery] = useState("");
 
-  // Filtered server-side: the list projection is id/name/role, so the client
-  // has no keywords to filter on.
   useEffect(() => {
     let live = true;
     const url = subfaction
@@ -113,8 +105,6 @@ const RosterStep: React.FC<{
     };
   }, [faction.id, subfaction]);
 
-  // A saved unit stores only its id and model count, so it cannot become a
-  // RosterItem until the datasheets list brings the cost tiers with it.
   useEffect(() => {
     if (!pendingUnits || !units.length) return;
 
@@ -124,8 +114,6 @@ const RosterStep: React.FC<{
       pendingUnits.map((p, i) => {
         const u = byId.get(p.datasheetId);
         const costs = u?.costs ?? [];
-        // costLine is exact. Rosters saved before it existed only have a
-        // count, which is ambiguous -- re-price them the same way the API does.
         const tier = p.costLine
           ? (costs.find((c) => c.line === p.costLine) ?? null)
           : priceByCount(costs, p.modelCount);
@@ -133,8 +121,6 @@ const RosterStep: React.FC<{
         return {
           uid: `${p.datasheetId}-restored-${i}`,
           datasheetId: p.datasheetId,
-          // The datasheet may have been dropped upstream since the save; the
-          // roster still lists it rather than losing the row silently.
           name: u?.name ?? "(unknown unit)",
           role: u?.role ?? null,
           costs,
@@ -165,8 +151,6 @@ const RosterStep: React.FC<{
     ]);
   };
 
-  // Picking a *row*, not a count: the row is what carries the price, and two
-  // rows can field the same number of models for different points.
   const choose = (uid: string, line: string) =>
     onRoster(
       roster.map((it) => {
@@ -210,8 +194,6 @@ const RosterStep: React.FC<{
           >
             ROSTER NAME
           </label>
-          {/* The heading is the field: naming the army is the first thing you
-              do, and a separate label would just repeat it. */}
           <input
             id="roster-name"
             value={name}
@@ -349,9 +331,6 @@ const RosterStep: React.FC<{
                   </div>
                 </div>
 
-                {/* 1348 of 1708 datasheets have exactly one priced option --
-                    Fulgrim cannot become two Fulgrims. Only render a control
-                    where there is genuinely something to choose. */}
                 {it.costs.length > 1 ? (
                   <select
                     aria-label={`${it.name} composition`}

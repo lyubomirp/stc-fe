@@ -83,8 +83,6 @@ const RosterList: React.FC<{
 
           <div className="flex flex-col gap-px bg-white/10">
             {list.map((r) => {
-              // Each row carries its own faction's accent, the same contract as
-              // a FactionCard: the colour is the fastest way to tell them apart.
               const accent = {
                 "--accent": factionColor(r.factionId),
               } as React.CSSProperties;

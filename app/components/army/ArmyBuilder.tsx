@@ -35,7 +35,6 @@ interface Overview {
 
 interface SavedUnit {
   datasheetId: string;
-  /** Null on rosters saved before the cost row became the key. */
   costLine: string | null;
   modelCount: number;
 }
@@ -53,29 +52,18 @@ const ArmyBuilder: React.FC<{
   const [picking, setPicking] = useState<"faction" | "subfaction" | null>(null);
   const [step, setStep] = useState<Step>("detachment");
   const [cap, setCap] = useState(2000);
-  // Lifted: the roster saves which detachment it was built for.
   const [detachmentId, setDetachmentId] = useState<string | null>(null);
 
-  // The roster lives here, not in RosterStep: the rail's meter and Save button
-  // read the same list the step edits, and two counters disagreeing about the
-  // points is worse than the prop drilling.
   const [rosterName, setRosterName] = useState("Untitled Roster");
   const [roster, setRoster] = useState<RosterItem[]>([]);
   const [saving, setSaving] = useState(false);
-  // Two different facts: `savedId` is this build's identity and must survive
-  // edits (clearing it would make the next Save mint a duplicate), while
-  // `dirty` is whether it still matches what is stored.
   const [savedId, setSavedId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Saved units cannot be rehydrated here: a RosterItem needs its cost tiers to
-  // price and step, and those arrive with the datasheets list that RosterStep
-  // fetches. So they are parked until that list exists.
+  // Awaiting the cost tiers that arrive with RosterStep's datasheets list.
   const [pendingUnits, setPendingUnits] = useState<SavedUnit[] | null>(null);
 
-  // ?roster=<id> means "edit this one": restore the build and land on the
-  // roster step, where the user left it.
   useEffect(() => {
     if (!rosterId) return;
 
@@ -108,11 +96,9 @@ const ArmyBuilder: React.FC<{
     return () => {
       live = false;
     };
-    // Once only: this seeds the build, and re-running it would stamp on edits.
+    // Seeds the build once; re-running would stamp on edits.
   }, [rosterId]);
 
-  // One overview call feeds the rail, the sub-faction picker and the
-  // detachment step -- all three are in this payload already.
   useEffect(() => {
     if (!faction) {
       setOverview(null);
@@ -152,8 +138,6 @@ const ArmyBuilder: React.FC<{
     setSavedId(null);
 
     try {
-      // Once this build has an id, Save replaces it. Posting every time meant
-      // each click minted another army with another copy of its units.
       const res = await fetch(
         savedId ? `${API}/rosters/${savedId}` : `${API}/rosters`,
         {
@@ -168,8 +152,6 @@ const ArmyBuilder: React.FC<{
             battleSize: cap,
             units: roster.map((r) => ({
               datasheetId: r.datasheetId,
-              // The chosen cost row. modelCount rides along for the legacy
-              // path only -- it cannot identify a price on its own.
               costLine: r.costLine,
               modelCount: r.modelCount,
             })),
@@ -191,9 +173,6 @@ const ArmyBuilder: React.FC<{
     }
   };
 
-  // No faction means no accent, and the :root fallback is white -- so the
-  // accent-bearing UI stays behind the empty state rather than rendering
-  // white on black.
   const accentStyle = faction
     ? ({ "--accent": factionColor(faction.id) } as React.CSSProperties)
     : undefined;
@@ -216,9 +195,6 @@ const ArmyBuilder: React.FC<{
         }
       />
 
-      {/* h-full + min-h-0 is what makes main scroll inside the shell rather
-          than growing the row: SM has 40 detachments, and a growing row drags
-          the rail's points meter and Save Army off-screen with it. */}
       <div className="relative z-10 flex h-full flex-col">
         <div className="border-b border-white/[0.07]">
           <TopNav accented={Boolean(faction)} />
@@ -242,9 +218,6 @@ const ArmyBuilder: React.FC<{
                 onClick={() => setPicking("faction")}
               />
 
-              {/* Most factions have none -- CSM and T'au included -- and a
-                  lone sub-faction is not a choice, so the second selector
-                  only appears where there is something to pick between. */}
               {faction && subfactions.length > 1 && (
                 <RailCard
                   label="SUB-FACTION"
@@ -324,8 +297,6 @@ const ArmyBuilder: React.FC<{
                   </div>
                 </div>
 
-                {/* The same action as the roster step's button -- one save,
-                    two entry points, rather than a decorative twin. */}
                 <button
                   type="button"
                   onClick={saveRoster}
@@ -424,8 +395,6 @@ const ArmyBuilder: React.FC<{
           hint="ACCESS LEVEL: STRATEGIC"
           onClose={() => setPicking(null)}
         >
-          {/* No activeId: the grid opens neutral, and the choice lights up in
-              the rail rather than here. */}
           <FactionGrid
             factions={factions}
             columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

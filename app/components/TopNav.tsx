@@ -3,8 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Datasheets has no route yet: its page is pre-rewrite, so it stays inert
-// rather than shipping a link into legacy.
+// Datasheets has no route yet: its page is pre-rewrite, so it stays inert.
 const TABS: { label: string; href?: string }[] = [
   { label: "Factions", href: "/" },
   { label: "Datasheets" },
@@ -12,9 +11,7 @@ const TABS: { label: string; href?: string }[] = [
   { label: "My Lists", href: "/rosters" },
 ];
 
-// `accented` opts a screen into its faction's colour. Off by default: the
-// faction list has no faction, and --accent there resolves to the white
-// :root fallback, which reads as a dead tab rather than an active one.
+// Off by default: without a faction, --accent falls back to white.
 const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
   const pathname = usePathname();
 

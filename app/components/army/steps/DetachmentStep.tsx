@@ -6,7 +6,6 @@ import { accentFade } from "@/app/data/factionColors";
 import { detachmentSubfaction } from "@/app/data/detachmentSubfactions";
 import type { Faction } from "@/app/store/factionStore";
 
-// Universal to 10e, not mock: these are the three standard battle sizes.
 const SCALES = [
   { id: "incursion", name: "Incursion", pts: 1000 },
   { id: "strike", name: "Strike Force", pts: 2000 },
@@ -21,7 +20,6 @@ const DetachmentStep: React.FC<{
   unitCount?: number;
   cap: number;
   onCap: (pts: number) => void;
-  // Lifted to ArmyBuilder: the roster needs to record what it was built for.
   selected: string | null;
   onSelect: (id: string | null) => void;
   onContinue: () => void;
@@ -37,13 +35,9 @@ const DetachmentStep: React.FC<{
   onSelect,
   onContinue,
 }) => {
-  // Boarding Actions is a separate, narrower game mode -- it does not belong
-  // in the same list as the standard detachments.
+  // Boarding Actions is a separate game mode.
   const standard = detachments.filter((d) => d.type === null);
 
-  // A detachment owned by another chapter is unavailable; one owned by nobody
-  // is open to all. Unknown names fall through as generic, so a gap in the
-  // BSData map shows a detachment rather than silently hiding it.
   const owned = (name: string) => detachmentSubfaction(name);
   const shown = subfaction
     ? standard.filter((d) => {
@@ -54,7 +48,6 @@ const DetachmentStep: React.FC<{
 
   const hidden = standard.length - shown.length;
 
-  // The selection cannot survive a filter that excludes it.
   const stillShown = shown.some((d) => d.id === selected);
   if (selected && !stillShown) onSelect(null);
 

@@ -1,24 +1,6 @@
-// Regenerates app/data/detachmentSubfactions.ts from BSData.
+// Regenerates app/data/detachmentSubfactions.ts from BSData. Runs by hand.
 //
 //   node scripts/gen-detachment-subfactions.mjs [--edition 10e|11e] [--check]
-//
-// Wahapedia cannot answer "which sub-faction may take this detachment": it
-// states the constraint in English ("Deathwing model only") and never names the
-// chapter, so Wrath of the Rock reads as available to Ultramarines. BSData
-// states it structurally, on the detachment entry itself:
-//
-//   modifier: set hidden = true
-//     when: notInstanceOf, scope=primary-catalogue, childId=<chapter catalogue>
-//
-//   = "hide unless the roster's primary catalogue is that chapter".
-//
-// That is the whole extraction. No entryLink/infoLink resolution, no modifier
-// solving -- the graph is only hard if you need the graph. This reads one field.
-//
-// BSData is NOT a runtime dependency and the import is untouched: this runs by
-// hand and commits a static map. 10e and 11e were verified to agree on all 39
-// shared detachments, so either edition is safe; 10e is the default because the
-// database is Wahapedia 10e.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -47,8 +29,7 @@ const OUT = path.join("app", "data", "detachmentSubfactions.ts");
 
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
-// Wahapedia writes curly apostrophes, BSData writes straight ones, and the two
-// disagree on punctuation generally. Names are the only join we have.
+// Name is the only join to Wahapedia; keep in step with the emitted norm below.
 const norm = (s) =>
   s
     .toLowerCase()
@@ -80,8 +61,7 @@ async function load(name) {
   return fs.readFileSync(file, "utf8");
 }
 
-// XML and JSON carry the same schema; normalise the XML into the JSON shape so
-// one extractor serves both editions.
+// 10e XML and 11e JSON share a schema; normalise XML into the JSON shape.
 const xml = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
@@ -144,8 +124,7 @@ function gateXml(e) {
   return null;
 }
 
-// "Imperium - Adeptus Astartes - Dark Angels" -> "Dark Angels". The last
-// segment is the sub-faction as Wahapedia keywords it.
+// "Imperium - Adeptus Astartes - Dark Angels" -> "Dark Angels".
 const label = (catalogueName) => catalogueName.split(" - ").pop().trim();
 
 const main = async () => {
@@ -195,9 +174,7 @@ const main = async () => {
 // Source: BSData/${repo} (${edition}). Regenerate with:
 //   node scripts/gen-detachment-subfactions.mjs --edition ${edition}
 //
-// Wahapedia states this constraint only in English prose, so it cannot be
-// derived from the import. Absent = available to every sub-faction; a missing
-// entry therefore shows the detachment rather than hiding it.
+// Absent = available to every sub-faction.
 export const DETACHMENT_SUBFACTION: Record<string, string> = {
 ${Object.keys(map)
   .sort()
@@ -212,7 +189,6 @@ const norm = (s: string): string =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-/** The sub-faction that exclusively owns this detachment, or null if any may take it. */
 export const detachmentSubfaction = (name: string): string | null =>
   DETACHMENT_SUBFACTION[norm(name)] ?? null;
 `;

@@ -42,9 +42,8 @@ const FactionCard: React.FC<{
         {factionData.name}
       </span>
 
-      {/* Active has to restate the hover treatment rather than rely on it:
-          otherwise the icon drops back to 0.07 the moment the mouse leaves a
-          card whose panel is still open. */}
+      {/* Active restates the hover treatment: the panel stays open after the
+          mouse leaves, and the icon must not drop back to 0.07. */}
       <FactionSvgResolver
         factionId={factionData.id}
         className={

@@ -2,9 +2,7 @@
 // Source: BSData/wh40k-10e (10e). Regenerate with:
 //   node scripts/gen-detachment-subfactions.mjs --edition 10e
 //
-// Wahapedia states this constraint only in English prose, so it cannot be
-// derived from the import. Absent = available to every sub-faction; a missing
-// entry therefore shows the detachment rather than hiding it.
+// Absent = available to every sub-faction.
 export const DETACHMENT_SUBFACTION: Record<string, string> = {
   "angelic inheritors": "Blood Angels",
   "black spear task force": "Deathwatch",
@@ -42,6 +40,5 @@ const norm = (s: string): string =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-/** The sub-faction that exclusively owns this detachment, or null if any may take it. */
 export const detachmentSubfaction = (name: string): string | null =>
   DETACHMENT_SUBFACTION[norm(name)] ?? null;
