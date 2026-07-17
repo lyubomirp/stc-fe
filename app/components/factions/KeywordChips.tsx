@@ -1,25 +1,15 @@
 "use client";
 import React, { useState } from "react";
 import { API } from "@/app/data/api";
-
-interface Keyword {
-  keyword: string;
-  isFactionKeyword: boolean;
-  units: number;
-}
-
-interface Unit {
-  id: string;
-  name: string;
-  role: string | null;
-}
+import type { Keyword } from "@/app/types/Keyword";
+import type { KeywordUnit } from "@/app/types/KeywordUnit";
 
 const KeywordChips: React.FC<{
   factionId: string;
   keywords: Keyword[];
 }> = ({ factionId, keywords }) => {
   const [open, setOpen] = useState<string | null>(null);
-  const [units, setUnits] = useState<Unit[]>([]);
+  const [units, setUnits] = useState<KeywordUnit[]>([]);
 
   const toggle = (keyword: string) => {
     if (open === keyword) {

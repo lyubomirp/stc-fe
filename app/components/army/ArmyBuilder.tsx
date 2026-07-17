@@ -1,54 +1,40 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
 import RailCard from "@/app/components/army/RailCard";
 import PickerModal from "@/app/components/army/PickerModal";
 import FactionGrid from "@/app/components/factions/FactionGrid";
 import DetachmentStep from "@/app/components/army/steps/DetachmentStep";
-import RosterStep, { RosterItem } from "@/app/components/army/steps/RosterStep";
-import LoadoutStep from "@/app/components/army/steps/LoadoutStep";
+import RosterStep from "@/app/components/army/steps/RosterStep";
 import useFactionStore, { Faction } from "@/app/store/factionStore";
 import { accentFade, factionColor, ON_ACCENT } from "@/app/data/factionColors";
 import { factionCode } from "@/app/data/factionMeta";
+import { rosterPoints } from "@/app/data/rosterPoints";
 import { API } from "@/app/data/api";
-
-export type Step = "detachment" | "roster" | "loadout";
+import type { FactionOverview } from "@/app/types/FactionOverview";
+import type { PendingUnit } from "@/app/types/PendingUnit";
+import type { RosterItem } from "@/app/types/RosterItem";
+import type { SavedUnit } from "@/app/types/SavedUnit";
+import type { Step } from "@/app/types/Step";
 
 const STEPS: { id: Step; label: string; num: string }[] = [
   { id: "detachment", label: "Detachment", num: "01" },
   { id: "roster", label: "Roster", num: "02" },
-  { id: "loadout", label: "Loadout", num: "03" },
 ];
-
-interface Subfaction {
-  keyword: string;
-  datasheets: number;
-}
-
-interface Overview {
-  subfactions: Subfaction[];
-  detachments: { id: string; name: string; type: string | null }[];
-  abilities: { id: string; name: string; description: string }[];
-  keywords: { keyword: string; isFactionKeyword: boolean; units: number }[];
-}
-
-interface SavedUnit {
-  datasheetId: string;
-  costLine: string | null;
-  modelCount: number;
-}
 
 const ArmyBuilder: React.FC<{
   factions: Faction[];
   rosterId: string | null;
 }> = ({ factions, rosterId }) => {
+  const router = useRouter();
   const faction = useFactionStore((s) => s.faction);
   const subfaction = useFactionStore((s) => s.subfaction);
   const setFaction = useFactionStore((s) => s.setFaction);
   const setSubfaction = useFactionStore((s) => s.setSubfaction);
 
-  const [overview, setOverview] = useState<Overview | null>(null);
+  const [overview, setOverview] = useState<FactionOverview | null>(null);
   const [picking, setPicking] = useState<"faction" | "subfaction" | null>(null);
   const [step, setStep] = useState<Step>("detachment");
   const [cap, setCap] = useState(2000);
@@ -62,7 +48,7 @@ const ArmyBuilder: React.FC<{
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Awaiting the cost tiers that arrive with RosterStep's datasheets list.
-  const [pendingUnits, setPendingUnits] = useState<SavedUnit[] | null>(null);
+  const [pendingUnits, setPendingUnits] = useState<PendingUnit[] | null>(null);
 
   useEffect(() => {
     if (!rosterId) return;
@@ -84,9 +70,15 @@ const ArmyBuilder: React.FC<{
         setDirty(false);
         setPendingUnits(
           (saved.units ?? []).map((u: SavedUnit) => ({
+            id: u.id,
             datasheetId: u.datasheetId,
             costLine: u.costLine ?? null,
             modelCount: u.modelCount,
+            wargear: u.wargear ?? [],
+            attachedToId: u.attachedToId ?? null,
+            enhancementId: u.enhancementId ?? null,
+            enhancementName: u.enhancementName ?? null,
+            enhancementPts: u.enhancementPts ?? null,
           })),
         );
         setStep("roster");
@@ -124,7 +116,7 @@ const ArmyBuilder: React.FC<{
 
   const subfactions = overview?.subfactions ?? [];
 
-  const rosterTotal = roster.reduce((sum, r) => sum + (r.pts ?? 0), 0);
+  const rosterTotal = rosterPoints(roster);
   const pct = Math.min(100, Math.round((rosterTotal / cap) * 100));
 
   const detachmentName =
@@ -135,7 +127,6 @@ const ArmyBuilder: React.FC<{
 
     setSaving(true);
     setSaveError(null);
-    setSavedId(null);
 
     try {
       const res = await fetch(
@@ -150,11 +141,22 @@ const ArmyBuilder: React.FC<{
             detachmentId,
             detachmentName,
             battleSize: cap,
-            units: roster.map((r) => ({
-              datasheetId: r.datasheetId,
-              costLine: r.costLine,
-              modelCount: r.modelCount,
-            })),
+            // The API addresses attachments by index into this array: the
+            // target's row id does not exist until it has been inserted.
+            units: roster.map((r) => {
+              const at = r.attachedToUid
+                ? roster.findIndex((x) => x.uid === r.attachedToUid)
+                : -1;
+
+              return {
+                datasheetId: r.datasheetId,
+                costLine: r.costLine,
+                modelCount: r.modelCount,
+                wargear: r.wargear.length ? r.wargear : null,
+                attachedToIndex: at < 0 ? null : at,
+                enhancementId: r.enhancementId,
+              };
+            }),
           }),
         },
       );
@@ -166,6 +168,11 @@ const ArmyBuilder: React.FC<{
 
       setSavedId((await res.json()).id);
       setDirty(false);
+
+      // Next's client Router Cache holds /rosters' payload for ~30s. The page
+      // being force-dynamic does not touch that -- it is server-side only, so
+      // without this a save then a nav back to My Lists shows the old points.
+      router.refresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -350,14 +357,35 @@ const ArmyBuilder: React.FC<{
                 cap={cap}
                 onCap={setCap}
                 selected={detachmentId}
-                onSelect={setDetachmentId}
+                onSelect={(id) => {
+                  // Enhancements belong to a detachment, so switching one makes
+                  // every pick illegal. The API would reject the save anyway;
+                  // this stops the points meter lying in the meantime.
+                  if (id !== detachmentId) {
+                    setRoster((r) =>
+                      r.map((u) =>
+                        u.enhancementId
+                          ? {
+                              ...u,
+                              enhancementId: null,
+                              enhancementName: null,
+                              enhancementPts: null,
+                            }
+                          : u,
+                      ),
+                    );
+                  }
+
+                  setDetachmentId(id);
+                }}
                 onContinue={() => setStep("roster")}
               />
-            ) : step === "roster" ? (
+            ) : (
               <RosterStep
                 faction={faction}
                 subfaction={subfaction}
                 detachmentName={detachmentName}
+                detachmentId={detachmentId}
                 cap={cap}
                 name={rosterName}
                 onName={(n) => {
@@ -380,10 +408,7 @@ const ArmyBuilder: React.FC<{
                 savedId={savedId}
                 dirty={dirty}
                 saveError={saveError}
-                onContinue={() => setStep("loadout")}
               />
-            ) : (
-              <LoadoutStep />
             )}
           </main>
         </div>

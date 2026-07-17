@@ -7,21 +7,7 @@ import KeywordChips from "@/app/components/factions/KeywordChips";
 import { factionCode } from "@/app/data/factionMeta";
 import { factionColor } from "@/app/data/factionColors";
 import { API } from "@/app/data/api";
-
-interface Ability {
-  id: string;
-  name: string;
-  legend: string | null;
-  description: string | null;
-}
-
-interface Overview {
-  faction: { id: string; name: string; link: string };
-  abilities: Ability[];
-  subfactions: { keyword: string; datasheets: number }[];
-  detachments: { id: string; name: string; type: string | null }[];
-  keywords: { keyword: string; isFactionKeyword: boolean; units: number }[];
-}
+import type { FactionOverview } from "@/app/types/FactionOverview";
 
 const Heading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <h3 className="mb-2 text-panel-label font-semibold uppercase text-[color:var(--accent)]">
@@ -33,7 +19,7 @@ const FactionPanel: React.FC<{ faction: any; onClose: () => void }> = ({
   faction,
   onClose,
 }) => {
-  const [overview, setOverview] = useState<Overview | null>(null);
+  const [overview, setOverview] = useState<FactionOverview | null>(null);
 
   useEffect(() => {
     let active = true;

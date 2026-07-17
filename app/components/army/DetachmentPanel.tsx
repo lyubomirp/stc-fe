@@ -7,29 +7,14 @@ import { accentFade, ON_ACCENT } from "@/app/data/factionColors";
 import { FACTION_META } from "@/app/data/factionMeta";
 import { API } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
-
-interface Named {
-  id: string;
-  name: string;
-  legend?: string | null;
-  description?: string | null;
-}
-
-interface Detail {
-  detachment: Named & { type: string | null };
-  rules: Named[];
-  stratagems: (Named & {
-    cpCost: number | null;
-    turn: string | null;
-    phase: string | null;
-    type: string | null;
-  })[];
-  enhancements: (Named & { cost: string | null })[];
-}
+import type { Ability } from "@/app/types/Ability";
+import type { DetachmentDetail } from "@/app/types/DetachmentDetail";
 
 // Each stratagem opens on its own: six full rule texts at once in a 320px
 // column is a wall, and you only ever read one at a time.
-const Stratagem: React.FC<{ s: Detail["stratagems"][number] }> = ({ s }) => {
+const Stratagem: React.FC<{ s: DetachmentDetail["stratagems"][number] }> = ({
+  s,
+}) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -61,7 +46,7 @@ const Stratagem: React.FC<{ s: Detail["stratagems"][number] }> = ({ s }) => {
 
 const DetachmentPanel: React.FC<{
   faction: Faction;
-  abilities: { id: string; name: string; description: string }[];
+  abilities: Ability[];
   unitCount?: number;
   detachmentCount: number;
   selectedId: string | null;
@@ -74,7 +59,7 @@ const DetachmentPanel: React.FC<{
   selectedId,
   onContinue,
 }) => {
-  const [detail, setDetail] = useState<Detail | null>(null);
+  const [detail, setDetail] = useState<DetachmentDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -140,7 +125,7 @@ const DetachmentPanel: React.FC<{
               <div className="mb-1.5 font-amsterdam text-lg font-bold text-white/95">
                 {ruleName}
               </div>
-              {armyRule ? (
+              {armyRule?.description ? (
                 <RichText html={armyRule.description} className="mb-5" />
               ) : (
                 <p className="mb-5 text-sm text-white/40">

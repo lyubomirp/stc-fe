@@ -1,34 +1,18 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import StepHeader from "@/app/components/army/steps/StepHeader";
+import LoadoutModal from "@/app/components/army/LoadoutModal";
 import { accentFade, ON_ACCENT } from "@/app/data/factionColors";
+import { rosterPoints } from "@/app/data/rosterPoints";
 import { API } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
-
-export interface RosterItem {
-  uid: string;
-  datasheetId: string;
-  name: string;
-  role: string | null;
-  costs: CostTier[];
-  costLine: string | null;
-  modelCount: number;
-  pts: number | null;
-}
-
-interface CostTier {
-  line: string;
-  models: number;
-  pts: number;
-  label: string;
-}
-
-interface Unit {
-  id: string;
-  name: string;
-  role: string | null;
-  costs: CostTier[];
-}
+import type { AttachTarget } from "@/app/types/AttachTarget";
+import type { CostTier } from "@/app/types/CostTier";
+import type { DatasheetListItem } from "@/app/types/DatasheetListItem";
+import type { Enhancement } from "@/app/types/Enhancement";
+import type { PendingUnit } from "@/app/types/PendingUnit";
+import type { RosterItem } from "@/app/types/RosterItem";
+import type { WargearPick } from "@/app/types/WargearPick";
 
 const TICKS = 44;
 
@@ -56,20 +40,19 @@ const RosterStep: React.FC<{
   onName: (name: string) => void;
   roster: RosterItem[];
   onRoster: (roster: RosterItem[]) => void;
-  pendingUnits:
-    | { datasheetId: string; costLine: string | null; modelCount: number }[]
-    | null;
+  detachmentId: string | null;
+  pendingUnits: PendingUnit[] | null;
   onHydrated: (roster: RosterItem[]) => void;
   onSave: () => void;
   saving: boolean;
   savedId: string | null;
   dirty: boolean;
   saveError: string | null;
-  onContinue: () => void;
 }> = ({
   faction,
   subfaction,
   detachmentName,
+  detachmentId,
   cap,
   name,
   onName,
@@ -82,10 +65,10 @@ const RosterStep: React.FC<{
   savedId,
   dirty,
   saveError,
-  onContinue,
 }) => {
-  const [units, setUnits] = useState<Unit[]>([]);
+  const [units, setUnits] = useState<DatasheetListItem[]>([]);
   const [query, setQuery] = useState("");
+  const [loadoutFor, setLoadoutFor] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -95,7 +78,7 @@ const RosterStep: React.FC<{
 
     fetch(url)
       .then((r) => r.json())
-      .then((j: Unit[]) => {
+      .then((j: DatasheetListItem[]) => {
         if (live) setUnits([...j].sort((a, b) => a.name.localeCompare(b.name)));
       })
       .catch(() => live && setUnits([]));
@@ -110,30 +93,50 @@ const RosterStep: React.FC<{
 
     const byId = new Map(units.map((u) => [u.id, u]));
 
-    onHydrated(
-      pendingUnits.map((p, i) => {
-        const u = byId.get(p.datasheetId);
-        const costs = u?.costs ?? [];
-        const tier = p.costLine
-          ? (costs.find((c) => c.line === p.costLine) ?? null)
-          : priceByCount(costs, p.modelCount);
+    const items: RosterItem[] = pendingUnits.map((p, i) => {
+      const u = byId.get(p.datasheetId);
+      const costs = u?.costs ?? [];
+      const tier = p.costLine
+        ? (costs.find((c) => c.line === p.costLine) ?? null)
+        : priceByCount(costs, p.modelCount);
 
-        return {
-          uid: `${p.datasheetId}-restored-${i}`,
-          datasheetId: p.datasheetId,
-          name: u?.name ?? "(unknown unit)",
-          role: u?.role ?? null,
-          costs,
-          costLine: tier?.line ?? null,
-          modelCount: tier?.models ?? p.modelCount,
-          pts: tier?.pts ?? null,
-        };
-      }),
+      return {
+        uid: `${p.datasheetId}-restored-${i}`,
+        datasheetId: p.datasheetId,
+        name: u?.name ?? "(unknown unit)",
+        role: u?.role ?? null,
+        costs,
+        costLine: tier?.line ?? null,
+        modelCount: tier?.models ?? p.modelCount,
+        pts: tier?.pts ?? null,
+        hasWargearChoices: u?.hasWargearChoices ?? false,
+        isLeader: u?.isLeader ?? false,
+        hasEnhancements: u?.hasEnhancements ?? false,
+        wargear: p.wargear ?? [],
+        attachedToUid: null,
+        enhancementId: p.enhancementId,
+        enhancementName: p.enhancementName,
+        enhancementPts: p.enhancementPts,
+      };
+    });
+
+    // Second pass: the saved attachment is a row id, so it can only be mapped
+    // once every uid exists. The API returns units in no guaranteed order, so
+    // this must key on the id and never on position.
+    const uidByRowId = new Map(
+      pendingUnits.map((p, i) => [p.id, items[i].uid]),
     );
+
+    items.forEach((item, i) => {
+      const rowId = pendingUnits[i].attachedToId;
+      item.attachedToUid = rowId ? (uidByRowId.get(rowId) ?? null) : null;
+    });
+
+    onHydrated(items);
     // onHydrated clears pendingUnits, so this runs once per load.
   }, [pendingUnits, units]);
 
-  const add = (u: Unit) => {
+  const add = (u: DatasheetListItem) => {
     const first = u.costs[0] ?? null;
 
     onRoster([
@@ -147,15 +150,60 @@ const RosterStep: React.FC<{
         costLine: first?.line ?? null,
         modelCount: first?.models ?? 1,
         pts: first?.pts ?? null,
+        hasWargearChoices: u.hasWargearChoices ?? false,
+        isLeader: u.isLeader ?? false,
+        hasEnhancements: u.hasEnhancements ?? false,
+        wargear: [],
+        attachedToUid: null,
+        enhancementId: null,
+        enhancementName: null,
+        enhancementPts: null,
       },
     ]);
   };
 
-  const choose = (uid: string, line: string) =>
+  const setLoadout = (
+    uid: string,
+    next: {
+      picks: WargearPick[];
+      attachedToUid: string | null;
+      enhancement: Enhancement | null;
+    },
+  ) =>
+    onRoster(
+      roster.map((it) =>
+        it.uid === uid
+          ? {
+              ...it,
+              wargear: next.picks,
+              attachedToUid: next.attachedToUid,
+              enhancementId: next.enhancement?.id ?? null,
+              enhancementName: next.enhancement?.name ?? null,
+              enhancementPts: next.enhancement?.pts ?? null,
+            }
+          : it,
+      ),
+    );
+
+  // Dropping a unit must not leave a leader pointing at it.
+  const remove = (uid: string) =>
+    onRoster(
+      roster
+        .filter((x) => x.uid !== uid)
+        .map((x) =>
+          x.attachedToUid === uid ? { ...x, attachedToUid: null } : x,
+        ),
+    );
+
+  // Steps the cost-line index, NOT the model count: two options can share a
+  // count (Wolf Guard Headtakers is 110 or 170 at 6 models), so a model-count
+  // axis cannot address them. costLine stays the identity.
+  const stepTier = (uid: string, delta: number) =>
     onRoster(
       roster.map((it) => {
         if (it.uid !== uid) return it;
-        const tier = it.costs.find((c) => c.line === line);
+        const i = it.costs.findIndex((c) => c.line === it.costLine);
+        const tier = it.costs[(i < 0 ? 0 : i) + delta];
         if (!tier) return it;
         return {
           ...it,
@@ -166,10 +214,7 @@ const RosterStep: React.FC<{
       }),
     );
 
-  const total = useMemo(
-    () => roster.reduce((sum, r) => sum + (r.pts ?? 0), 0),
-    [roster],
-  );
+  const total = useMemo(() => rosterPoints(roster), [roster]);
   const pct = Math.min(100, Math.round((total / cap) * 100));
   const filled = Math.round((pct / 100) * TICKS);
   const over = total > cap;
@@ -183,7 +228,7 @@ const RosterStep: React.FC<{
     <>
       <StepHeader
         title="Roster"
-        meta={`STEP 2 / 3 · ${shown.length} UNITS AVAILABLE`}
+        meta={`STEP 2 / 2 · ${shown.length} UNITS AVAILABLE`}
       />
 
       <div className="mb-6 flex items-center gap-7 border border-white/[0.09] px-6 py-4">
@@ -317,55 +362,150 @@ const RosterStep: React.FC<{
           )}
 
           <div className="flex flex-col gap-2.5">
-            {roster.map((it) => (
-              <div
-                key={it.uid}
-                className="flex items-center gap-3.5 border border-white/[0.08] bg-white/[0.014] px-4 py-3 transition-colors hover:border-white/20"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-amsterdam text-lg font-bold uppercase leading-none text-white">
-                    {it.name}
-                  </div>
-                  <div className="mt-1 font-mono text-[10px] text-white/45">
-                    {it.role ?? "—"}
-                  </div>
-                </div>
+            {roster.map((it) => {
+              const i = it.costs.findIndex((c) => c.line === it.costLine);
+              const set =
+                it.wargear.length +
+                (it.attachedToUid ? 1 : 0) +
+                (it.enhancementId ? 1 : 0);
+              const leads = it.attachedToUid
+                ? roster.find((x) => x.uid === it.attachedToUid)
+                : null;
 
-                {it.costs.length > 1 ? (
-                  <select
-                    aria-label={`${it.name} composition`}
-                    value={it.costLine ?? ""}
-                    onChange={(e) => choose(it.uid, e.target.value)}
-                    className="w-[260px] shrink-0 border border-white/15 bg-black px-2 py-1.5 text-xs text-white/80 outline-none transition-colors hover:border-white/30 focus:border-[color:var(--accent)]"
-                  >
-                    {it.costs.map((c) => (
-                      <option key={c.line} value={c.line}>
-                        {c.label} — {c.pts} pts
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="w-[260px] shrink-0 truncate font-mono text-[11px] text-white/45">
-                    {it.costs[0]?.label ?? `${it.modelCount} models`}
-                  </span>
-                )}
-
-                <span className="w-20 shrink-0 text-right font-mono text-sm font-bold text-[color:var(--accent)]">
-                  {it.pts ?? "—"}{" "}
-                  <span className="font-normal text-white/45">PTS</span>
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    onRoster(roster.filter((x) => x.uid !== it.uid))
-                  }
-                  className="shrink-0 border border-white/15 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] text-white/50 transition-colors hover:border-red-400/40 hover:text-red-400"
+              return (
+                <div
+                  key={it.uid}
+                  className="flex items-center gap-3.5 border border-white/[0.08] bg-white/[0.014] px-4 py-3 transition-colors hover:border-white/20"
                 >
-                  REMOVE
-                </button>
-              </div>
-            ))}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-amsterdam text-lg font-bold uppercase leading-none text-white">
+                      {it.name}
+                    </div>
+                    <div className="mt-1 font-mono text-[10px] text-white/45">
+                      {it.role ?? "—"}
+                      {it.enhancementName && (
+                        <span className="text-[color:var(--accent)]">
+                          {" · "}
+                          {it.enhancementName.toUpperCase()}
+                          {" +"}
+                          {it.enhancementPts}
+                        </span>
+                      )}
+                      {leads && (
+                        <span className="text-[color:var(--accent)]">
+                          {" · LEADING "}
+                          {leads.name.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {it.costs.length > 1 ? (
+                    <div className="flex w-[260px] shrink-0 items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Smaller ${it.name}`}
+                        onClick={() => stepTier(it.uid, -1)}
+                        disabled={i <= 0}
+                        style={
+                          i > 0
+                            ? {
+                                borderColor: accentFade(40),
+                                background: accentFade(10),
+                              }
+                            : undefined
+                        }
+                        className={
+                          "inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center border text-base leading-none transition-colors " +
+                          (i > 0
+                            ? "text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black"
+                            : "cursor-not-allowed border-white/10 text-white/20")
+                        }
+                      >
+                        −
+                      </button>
+
+                      {/* Fixed width, not flex-1: filling the 260px slot threw
+                          the − and + ~230px apart and they stopped reading as
+                          one control. 8 labels game-wide overflow this, all
+                          Space Marines compound squads -- hence the title. */}
+                      <span
+                        title={it.costs[i]?.label ?? undefined}
+                        className="w-[168px] truncate text-center font-mono text-[11px] text-white/70"
+                      >
+                        {it.costs[i]?.label ?? "—"}
+                      </span>
+
+                      <button
+                        type="button"
+                        aria-label={`Larger ${it.name}`}
+                        onClick={() => stepTier(it.uid, 1)}
+                        disabled={i >= it.costs.length - 1}
+                        style={
+                          i < it.costs.length - 1
+                            ? {
+                                borderColor: accentFade(40),
+                                background: accentFade(10),
+                              }
+                            : undefined
+                        }
+                        className={
+                          "inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center border text-base leading-none transition-colors " +
+                          (i < it.costs.length - 1
+                            ? "text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black"
+                            : "cursor-not-allowed border-white/10 text-white/20")
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="w-[260px] shrink-0 truncate text-center font-mono text-[11px] text-white/45">
+                      {it.costs[0]?.label ?? `${it.modelCount} models`}
+                    </span>
+                  )}
+
+                  <span className="w-20 shrink-0 text-right font-mono text-sm font-bold text-[color:var(--accent)]">
+                    {it.pts == null ? "—" : it.pts + (it.enhancementPts ?? 0)}{" "}
+                    <span className="font-normal text-white/45">PTS</span>
+                  </span>
+
+                  {/* Only EC carries a wargear map today, so most units have
+                      nothing to open -- a dead button would be a lie. The slot
+                      is reserved regardless: an absent button dragged every
+                      column left of it out of line with its neighbours. */}
+                  <div className="flex w-[104px] shrink-0 justify-end">
+                    {(it.hasWargearChoices ||
+                      it.isLeader ||
+                      it.hasEnhancements) && (
+                      <button
+                        type="button"
+                        onClick={() => setLoadoutFor(it.uid)}
+                        style={
+                          set ? { borderColor: accentFade(45) } : undefined
+                        }
+                        className={
+                          "border px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] transition-colors " +
+                          (set
+                            ? "text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black"
+                            : "border-white/15 text-white/50 hover:border-white/40 hover:text-white")
+                        }
+                      >
+                        LOADOUT{set ? ` · ${set}` : ""}
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => remove(it.uid)}
+                    className="shrink-0 border border-white/15 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] text-white/50 transition-colors hover:border-red-400/40 hover:text-red-400"
+                  >
+                    REMOVE
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-6 flex items-center gap-4">
@@ -394,20 +534,6 @@ const RosterStep: React.FC<{
                     : "Save Army"}
             </button>
 
-            <button
-              type="button"
-              onClick={onContinue}
-              disabled={!roster.length}
-              className={
-                "px-5 py-3 font-amsterdam text-[15px] font-bold uppercase tracking-[0.1em] transition-colors " +
-                (roster.length
-                  ? "border border-white/25 text-white hover:border-white hover:bg-white/5"
-                  : "cursor-not-allowed border border-white/10 text-white/25")
-              }
-            >
-              Edit Loadouts →
-            </button>
-
             {savedId && (
               <span
                 className={
@@ -427,6 +553,45 @@ const RosterStep: React.FC<{
           </div>
         </div>
       </div>
+
+      {(() => {
+        const it = roster.find((x) => x.uid === loadoutFor);
+        if (!it) return null;
+
+        const targets: AttachTarget[] = roster
+          .filter((x) => x.uid !== it.uid)
+          .map((x) => ({
+            uid: x.uid,
+            datasheetId: x.datasheetId,
+            name: x.name,
+            costLabel:
+              x.costs.find((c) => c.line === x.costLine)?.label ?? null,
+            ledBy: roster.find((c) => c.attachedToUid === x.uid)?.uid ?? null,
+          }));
+
+        return (
+          <LoadoutModal
+            datasheetId={it.datasheetId}
+            selfUid={it.uid}
+            unitName={it.name}
+            costLabel={
+              it.costs.find((c) => c.line === it.costLine)?.label ?? null
+            }
+            picks={it.wargear}
+            isLeader={it.isLeader}
+            targets={targets}
+            attachedToUid={it.attachedToUid}
+            hasEnhancements={it.hasEnhancements}
+            detachmentId={detachmentId}
+            spentEnhancements={roster
+              .filter((x) => x.uid !== it.uid && x.enhancementId)
+              .map((x) => x.enhancementId!)}
+            enhancementId={it.enhancementId}
+            onSave={(next) => setLoadout(it.uid, next)}
+            onClose={() => setLoadoutFor(null)}
+          />
+        );
+      })()}
     </>
   );
 };

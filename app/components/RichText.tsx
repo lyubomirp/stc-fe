@@ -1,7 +1,8 @@
 "use client";
 import React, { useCallback, useState } from "react";
-import RuleTooltip, { TipState } from "@/app/components/RuleTooltip";
+import RuleTooltip from "@/app/components/RuleTooltip";
 import { lookupRule } from "@/app/data/rules";
+import type { TipState } from "@/app/types/TipState";
 
 // hrefs arrive as /wh40k10ed/..., so only the origin is missing.
 const ORIGIN = "https://wahapedia.ru";

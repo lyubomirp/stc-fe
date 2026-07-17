@@ -1,15 +1,7 @@
 "use client";
 import React, { CSSProperties, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Rule } from "@/app/data/rules";
-
-export interface TipState {
-  rule: Rule;
-  x: number;
-  y: number;
-  // Portals to document.body, outside the subtree that sets --accent.
-  accent: string;
-}
+import type { TipState } from "@/app/types/TipState";
 
 const RuleTooltip: React.FC<{
   tip: TipState | null;

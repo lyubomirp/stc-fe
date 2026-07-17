@@ -2,20 +2,8 @@
 import React, { useState } from "react";
 import RichText from "@/app/components/RichText";
 import { API } from "@/app/data/api";
-
-interface Named {
-  id: string;
-  name: string;
-  legend?: string | null;
-  description?: string | null;
-}
-
-interface Overview {
-  detachment: Named & { type: string | null };
-  rules: Named[];
-  stratagems: (Named & { cpCost: number | null; turn: string | null })[];
-  enhancements: (Named & { cost: string | null })[];
-}
+import type { DetachmentDetail } from "@/app/types/DetachmentDetail";
+import type { DetachmentRef } from "@/app/types/DetachmentRef";
 
 const Sub: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <h4 className="mb-1 mt-4 text-panel-label font-semibold uppercase text-white/40">
@@ -24,10 +12,10 @@ const Sub: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 const DetachmentExpander: React.FC<{
-  detachment: { id: string; name: string; type: string | null };
+  detachment: DetachmentRef;
 }> = ({ detachment }) => {
   const [open, setOpen] = useState(false);
-  const [data, setData] = useState<Overview | null>(null);
+  const [data, setData] = useState<DetachmentDetail | null>(null);
 
   const toggle = () => {
     const next = !open;

@@ -5,6 +5,8 @@ import DetachmentPanel from "@/app/components/army/DetachmentPanel";
 import { accentFade } from "@/app/data/factionColors";
 import { detachmentSubfaction } from "@/app/data/detachmentSubfactions";
 import type { Faction } from "@/app/store/factionStore";
+import type { Ability } from "@/app/types/Ability";
+import type { DetachmentRef } from "@/app/types/DetachmentRef";
 
 const SCALES = [
   { id: "incursion", name: "Incursion", pts: 1000 },
@@ -15,8 +17,8 @@ const SCALES = [
 const DetachmentStep: React.FC<{
   faction: Faction;
   subfaction: string | null;
-  detachments: { id: string; name: string; type: string | null }[];
-  abilities: { id: string; name: string; description: string }[];
+  detachments: DetachmentRef[];
+  abilities: Ability[];
   unitCount?: number;
   cap: number;
   onCap: (pts: number) => void;
@@ -55,7 +57,7 @@ const DetachmentStep: React.FC<{
     <>
       <StepHeader
         title="Choose Detachment"
-        meta={`STEP 1 / 3 · ${shown.length} AVAILABLE${hidden ? ` · ${hidden} CHAPTER-LOCKED` : ""}`}
+        meta={`STEP 1 / 2 · ${shown.length} AVAILABLE${hidden ? ` · ${hidden} CHAPTER-LOCKED` : ""}`}
       />
 
       <div className="grid items-start gap-6 xl:grid-cols-[220px_1fr_320px]">
