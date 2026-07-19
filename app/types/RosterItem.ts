@@ -22,4 +22,8 @@ export interface RosterItem {
   enhancementName: string | null;
   // Unlike wargear, this DOES move the army total.
   enhancementPts: number | null;
+  // Set when the unit is an allied unit from another faction. `allyCategory` is
+  // the cap bucket (null for a dependent transport that never counts).
+  allyFamily: string | null;
+  allyCategory: string | null;
 }

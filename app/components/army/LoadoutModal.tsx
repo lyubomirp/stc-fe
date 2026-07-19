@@ -270,7 +270,9 @@ const LoadoutModal: React.FC<{
       .then((j: Weapon[]) => live && setWeapons(j))
       .catch(() => live && setWeapons([]));
 
-    if (isLeader) {
+    // Also when it can take enhancements: one might grant an attachment even to
+    // a character with no base pairings, and the grant is unioned onto `leads`.
+    if (isLeader || hasEnhancements) {
       fetch(`${API}/datasheets-leader/${datasheetId}/leads`)
         .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
         .then((j: { id: string }[]) => live && setLeads(j.map((x) => x.id)))
@@ -301,6 +303,14 @@ const LoadoutModal: React.FC<{
     [enhancements, detachmentId, enhancementId, spentEnhancements],
   );
 
+  // The base pairings plus anything the selected enhancement grants.
+  const leadable = useMemo(() => {
+    const set = new Set(leads ?? []);
+    const grant = offered.find((e) => e.id === enhancement)?.grantsAttachmentTo;
+    grant?.forEach((id) => set.add(id));
+    return set;
+  }, [leads, offered, enhancement]);
+
   // Which units in this roster this leader may actually join. The API rejects
   // an illegal pairing anyway; this stops one being offered.
   //
@@ -309,8 +319,8 @@ const LoadoutModal: React.FC<{
   // the user detach first. Its own current target is of course still offered.
   const legal = useMemo(
     () =>
-      leads == null ? [] : targets.filter((t) => leads.includes(t.datasheetId)),
-    [leads, targets],
+      leads == null ? [] : targets.filter((t) => leadable.has(t.datasheetId)),
+    [leads, targets, leadable],
   );
 
   const attachable = useMemo(
@@ -417,7 +427,8 @@ const LoadoutModal: React.FC<{
       {sheet && (
         <div className="grid items-start gap-8 lg:grid-cols-[1fr_340px]">
           <div>
-            {isLeader && (
+            {(isLeader ||
+              offered.some((e) => e.grantsAttachmentTo?.length)) && (
               <fieldset className="mb-5 border border-white/[0.08] p-4">
                 <legend className="px-2 font-mono text-hud text-white/45">
                   ATTACHES TO

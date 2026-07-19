@@ -7,6 +7,7 @@ import { rosterPoints } from "@/app/data/rosterPoints";
 import { API } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
 import type { AttachTarget } from "@/app/types/AttachTarget";
+import type { AlliedFamily, AlliedUnit } from "@/app/types/AlliedFamily";
 import type { CostTier } from "@/app/types/CostTier";
 import type { DatasheetListItem } from "@/app/types/DatasheetListItem";
 import type { Enhancement } from "@/app/types/Enhancement";
@@ -15,6 +16,12 @@ import type { RosterItem } from "@/app/types/RosterItem";
 import type { WargearPick } from "@/app/types/WargearPick";
 
 const TICKS = 44;
+
+interface CapRow {
+  label: string;
+  used: number;
+  cap: number;
+}
 
 // Legacy rosters carry only a model count, which is ambiguous. Must keep
 // quoting the higher tier, matching priceAt in the API's utils/costs.
@@ -67,6 +74,7 @@ const RosterStep: React.FC<{
   saveError,
 }) => {
   const [units, setUnits] = useState<DatasheetListItem[]>([]);
+  const [families, setFamilies] = useState<AlliedFamily[] | null>(null);
   const [query, setQuery] = useState("");
   const [loadoutFor, setLoadoutFor] = useState<string | null>(null);
 
@@ -83,19 +91,45 @@ const RosterStep: React.FC<{
       })
       .catch(() => live && setUnits([]));
 
+    // Allied families do not depend on the sub-faction; keyed on faction only.
     return () => {
       live = false;
     };
   }, [faction.id, subfaction]);
 
   useEffect(() => {
-    if (!pendingUnits || !units.length) return;
+    let live = true;
+
+    fetch(`${API}/allies/${faction.id}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((j: AlliedFamily[]) => live && setFamilies(j))
+      .catch(() => live && setFamilies([]));
+
+    return () => {
+      live = false;
+    };
+  }, [faction.id]);
+
+  // Every allied unit across all families, keyed by datasheet id, so a saved
+  // roster's agents rehydrate and cap usage can be attributed.
+  const alliesById = useMemo(() => {
+    const map = new Map<string, { familyId: string; unit: AlliedUnit }>();
+    for (const f of families ?? []) {
+      for (const u of f.units) map.set(u.id, { familyId: f.id, unit: u });
+    }
+    return map;
+  }, [families]);
+
+  useEffect(() => {
+    // Wait for both pools: agents live in `families`, not the datasheets list.
+    if (!pendingUnits || !units.length || families == null) return;
 
     const byId = new Map(units.map((u) => [u.id, u]));
 
     const items: RosterItem[] = pendingUnits.map((p, i) => {
+      const ally = alliesById.get(p.datasheetId);
       const u = byId.get(p.datasheetId);
-      const costs = u?.costs ?? [];
+      const costs = ally?.unit.costs ?? u?.costs ?? [];
       const tier = p.costLine
         ? (costs.find((c) => c.line === p.costLine) ?? null)
         : priceByCount(costs, p.modelCount);
@@ -103,8 +137,8 @@ const RosterStep: React.FC<{
       return {
         uid: `${p.datasheetId}-restored-${i}`,
         datasheetId: p.datasheetId,
-        name: u?.name ?? "(unknown unit)",
-        role: u?.role ?? null,
+        name: ally?.unit.name ?? u?.name ?? "(unknown unit)",
+        role: ally?.unit.role ?? u?.role ?? null,
         costs,
         costLine: tier?.line ?? null,
         modelCount: tier?.models ?? p.modelCount,
@@ -117,6 +151,8 @@ const RosterStep: React.FC<{
         enhancementId: p.enhancementId,
         enhancementName: p.enhancementName,
         enhancementPts: p.enhancementPts,
+        allyFamily: ally?.familyId ?? null,
+        allyCategory: ally?.unit.category ?? null,
       };
     });
 
@@ -134,7 +170,10 @@ const RosterStep: React.FC<{
 
     onHydrated(items);
     // onHydrated clears pendingUnits, so this runs once per load.
-  }, [pendingUnits, units]);
+  }, [pendingUnits, units, families]);
+
+  const newUid = (id: string) =>
+    `${id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const add = (u: DatasheetListItem) => {
     const first = u.costs[0] ?? null;
@@ -142,7 +181,7 @@ const RosterStep: React.FC<{
     onRoster([
       ...roster,
       {
-        uid: `${u.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        uid: newUid(u.id),
         datasheetId: u.id,
         name: u.name,
         role: u.role,
@@ -158,6 +197,38 @@ const RosterStep: React.FC<{
         enhancementId: null,
         enhancementName: null,
         enhancementPts: null,
+        allyFamily: null,
+        allyCategory: null,
+      },
+    ]);
+  };
+
+  // An allied unit: priced from its ally costs, tagged with family and category.
+  // No wargear/leader/enhancement surface in this first cut.
+  const addAlly = (u: AlliedUnit, familyId: string) => {
+    const first = u.costs[0] ?? null;
+
+    onRoster([
+      ...roster,
+      {
+        uid: newUid(u.id),
+        datasheetId: u.id,
+        name: u.name,
+        role: u.role,
+        costs: u.costs,
+        costLine: first?.line ?? null,
+        modelCount: first?.models ?? 1,
+        pts: first?.pts ?? null,
+        hasWargearChoices: false,
+        isLeader: false,
+        hasEnhancements: false,
+        wargear: [],
+        attachedToUid: null,
+        enhancementId: null,
+        enhancementName: null,
+        enhancementPts: null,
+        allyFamily: familyId,
+        allyCategory: u.category,
       },
     ]);
   };
@@ -223,6 +294,51 @@ const RosterStep: React.FC<{
   const shown = q
     ? units.filter((u) => u.name.toLowerCase().includes(q))
     : units;
+
+  const shownAllies = useMemo(
+    () =>
+      (families ?? [])
+        .map((f) => ({
+          family: f,
+          units: q
+            ? f.units.filter((u) => u.name.toLowerCase().includes(q))
+            : f.units,
+        }))
+        .filter((f) => f.units.length),
+    [families, q],
+  );
+
+  // Each family's usage against its cap for this battle size, shown not
+  // enforced. Count mode is per-category unit counts (Agents); points mode is
+  // a combined points budget (Daemonic Pact).
+  const capUsage = useMemo(() => {
+    const out: { name: string; rows: CapRow[] }[] = [];
+
+    for (const f of families ?? []) {
+      const mine = roster.filter((r) => r.allyFamily === f.id);
+      if (!mine.length) continue;
+
+      const caps = f.caps;
+      const rows: CapRow[] =
+        caps.mode === "count"
+          ? f.categories.map((label) => ({
+              label,
+              used: mine.filter((r) => r.allyCategory === label).length,
+              cap: caps.byBattleSize[cap]?.[label] ?? 0,
+            }))
+          : [
+              {
+                label: "PTS",
+                used: mine.reduce((sum, r) => sum + (r.pts ?? 0), 0),
+                cap: caps.byBattleSize[cap] ?? 0,
+              },
+            ];
+
+      out.push({ name: f.name, rows });
+    }
+
+    return out;
+  }, [families, roster, cap]);
 
   return (
     <>
@@ -339,6 +455,44 @@ const RosterStep: React.FC<{
                 {units.length ? "NO MATCHES" : "LOADING…"}
               </div>
             )}
+
+            {shownAllies.map(({ family, units: agentUnits }) => (
+              <div key={family.id} className="mt-4">
+                <div className="mb-1 border-t border-white/[0.08] pt-3 font-mono text-hud text-[color:var(--accent)]">
+                  ALLIED · {family.name.toUpperCase()}
+                </div>
+                {agentUnits.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-3 border-b border-white/[0.05] px-1 py-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-white/90">
+                        {u.name}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-white/45">
+                        {u.category && <span>{u.category.toUpperCase()}</span>}
+                        <span className="text-[color:var(--accent)]">
+                          {u.costs[0]?.pts ?? "—"} PTS
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Add ${u.name}`}
+                      onClick={() => addAlly(u, family.id)}
+                      style={{
+                        borderColor: accentFade(40),
+                        background: accentFade(10),
+                      }}
+                      className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center border text-base leading-none text-[color:var(--accent)] transition-colors hover:bg-[color:var(--accent)] hover:text-black"
+                    >
+                      +
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -354,6 +508,35 @@ const RosterStep: React.FC<{
               </span>
             )}
           </div>
+
+          {capUsage.map((f) => (
+            <div
+              key={f.name}
+              className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 border border-white/[0.08] px-4 py-2.5"
+            >
+              <span className="font-mono text-hud text-[color:var(--accent)]">
+                {f.name.toUpperCase()}
+              </span>
+              {f.rows.map((r) => {
+                const over = r.used > r.cap;
+                // "PTS" is the points-budget row; show it as "used / cap PTS".
+                const isPts = r.label === "PTS";
+                return (
+                  <span
+                    key={r.label}
+                    className="font-mono text-[10px] tracking-[0.1em]"
+                    style={{
+                      color: over ? "#ff6b6b" : "rgba(255,255,255,0.5)",
+                    }}
+                  >
+                    {isPts
+                      ? `${r.used} / ${r.cap} PTS`
+                      : `${r.label.toUpperCase()} ${r.used}/${r.cap}`}
+                  </span>
+                );
+              })}
+            </div>
+          ))}
 
           {!roster.length && (
             <div className="border border-dashed border-white/15 p-10 text-center font-mono text-xs tracking-[0.1em] text-white/45">
@@ -382,6 +565,15 @@ const RosterStep: React.FC<{
                       {it.name}
                     </div>
                     <div className="mt-1 font-mono text-[10px] text-white/45">
+                      {it.allyFamily && (
+                        <span className="text-[color:var(--accent)]">
+                          ALLY
+                          {it.allyCategory
+                            ? ` · ${it.allyCategory.toUpperCase()}`
+                            : ""}
+                          {" · "}
+                        </span>
+                      )}
                       {it.role ?? "—"}
                       {it.enhancementName && (
                         <span className="text-[color:var(--accent)]">

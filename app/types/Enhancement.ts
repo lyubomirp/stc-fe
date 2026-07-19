@@ -6,4 +6,6 @@ export interface Enhancement {
   detachment: string;
   detachmentId: string | null;
   description: string;
+  // Datasheet ids this enhancement lets its bearer lead beyond the base pairings.
+  grantsAttachmentTo?: string[];
 }
