@@ -1,9 +1,10 @@
 # STC — Standard Template Construct (frontend)
 
 The web client for [STC](https://github.com/lyubomirp/stc-api): browse Warhammer
-40,000 factions, datasheets, weapon profiles, stratagems and abilities. Talks to
-the STC API, which mirrors the [Wahapedia](https://wahapedia.ru) data exports
-into Postgres.
+40,000 factions, datasheets, weapon profiles, stratagems and abilities, and
+build army lists — pick a detachment, add units, set their loadouts and leaders,
+bring in allied units, and save the result. Talks to the STC API, which mirrors
+the [Wahapedia](https://wahapedia.ru) data exports into Postgres.
 
 Unofficial and non-commercial. Not affiliated with or endorsed by Games
 Workshop. Warhammer 40,000 and all associated names, logos and iconography are
@@ -33,6 +34,8 @@ will offer the next free one for the client.
 Useful routes:
 
 - `/` — faction picker
+- `/army-builder` — build a list: detachment, units, loadouts, leaders, allies
+- `/rosters` — saved army lists ("My Lists"), with a Recently Deleted section
 - `/icons` — every faction and mechanic icon rendered at a uniform size, for
   checking visual consistency
 
