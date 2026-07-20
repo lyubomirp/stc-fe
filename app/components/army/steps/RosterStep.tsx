@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import StepHeader from "@/app/components/army/steps/StepHeader";
 import LoadoutModal from "@/app/components/army/LoadoutModal";
+import DatasheetModal from "@/app/components/datasheets/DatasheetModal";
 import { accentFade, ON_ACCENT } from "@/app/data/factionColors";
 import { rosterPoints } from "@/app/data/rosterPoints";
 import { API } from "@/app/data/api";
@@ -14,6 +15,7 @@ import type { Enhancement } from "@/app/types/Enhancement";
 import type { PendingUnit } from "@/app/types/PendingUnit";
 import type { RosterItem } from "@/app/types/RosterItem";
 import type { WargearPick } from "@/app/types/WargearPick";
+import type { DatasheetHit } from "@/app/types/DatasheetHit";
 
 const TICKS = 44;
 
@@ -25,6 +27,19 @@ interface CapRow {
 
 // Legacy rosters carry only a model count, which is ambiguous. Must keep
 // quoting the higher tier, matching priceAt in the API's utils/costs.
+// The defined allied-cap battle sizes are 1000/2000/3000; pick the one closest
+// to an arbitrary points cap so Combat Patrol and custom games still get a cap.
+const nearestBracket = (
+  pts: number,
+  byBattleSize: Record<number, unknown>,
+): number => {
+  const keys = Object.keys(byBattleSize).map(Number);
+  if (!keys.length) return pts;
+  return keys.reduce((best, k) =>
+    Math.abs(k - pts) < Math.abs(best - pts) ? k : best,
+  );
+};
+
 const priceByCount = (
   tiers: CostTier[],
   modelCount: number,
@@ -77,6 +92,23 @@ const RosterStep: React.FC<{
   const [families, setFamilies] = useState<AlliedFamily[] | null>(null);
   const [query, setQuery] = useState("");
   const [loadoutFor, setLoadoutFor] = useState<string | null>(null);
+  const [infoHit, setInfoHit] = useState<DatasheetHit | null>(null);
+
+  // The datasheet a roster row points at, coloured by its real faction (an
+  // ally keeps its own accent, not the primary faction's).
+  const infoForRoster = (it: RosterItem): DatasheetHit => {
+    const fam = it.allyFamily
+      ? (families ?? []).find((f) => f.id === it.allyFamily)
+      : null;
+
+    return {
+      id: it.datasheetId,
+      name: it.name,
+      role: it.role,
+      factionId: fam?.sourceFactionId ?? faction.id,
+      factionName: fam?.name ?? faction.name,
+    };
+  };
 
   useEffect(() => {
     let live = true;
@@ -319,18 +351,21 @@ const RosterStep: React.FC<{
       if (!mine.length) continue;
 
       const caps = f.caps;
+      // Rules define allied caps only at 1000/2000/3000; map any other size
+      // (Combat Patrol 500, custom) to the nearest defined bracket.
+      const bracket = nearestBracket(cap, caps.byBattleSize);
       const rows: CapRow[] =
         caps.mode === "count"
           ? f.categories.map((label) => ({
               label,
               used: mine.filter((r) => r.allyCategory === label).length,
-              cap: caps.byBattleSize[cap]?.[label] ?? 0,
+              cap: caps.byBattleSize[bracket]?.[label] ?? 0,
             }))
           : [
               {
                 label: "PTS",
                 used: mine.reduce((sum, r) => sum + (r.pts ?? 0), 0),
-                cap: caps.byBattleSize[cap] ?? 0,
+                cap: caps.byBattleSize[bracket] ?? 0,
               },
             ];
 
@@ -426,9 +461,22 @@ const RosterStep: React.FC<{
                 className="flex items-center gap-3 border-b border-white/[0.05] px-1 py-2.5"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-white/90">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setInfoHit({
+                        id: u.id,
+                        name: u.name,
+                        role: u.role,
+                        factionId: faction.id,
+                        factionName: faction.name,
+                      })
+                    }
+                    title="View datasheet"
+                    className="block max-w-full truncate text-left text-sm font-semibold text-white/90 transition-colors hover:text-[color:var(--accent)]"
+                  >
                     {u.name}
-                  </div>
+                  </button>
                   {u.role && (
                     <div className="mt-0.5 font-mono text-[10px] text-white/45">
                       {u.role}
@@ -467,9 +515,22 @@ const RosterStep: React.FC<{
                     className="flex items-center gap-3 border-b border-white/[0.05] px-1 py-2.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-white/90">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setInfoHit({
+                            id: u.id,
+                            name: u.name,
+                            role: u.role,
+                            factionId: family.sourceFactionId,
+                            factionName: family.name,
+                          })
+                        }
+                        title="View datasheet"
+                        className="block max-w-full truncate text-left text-sm font-semibold text-white/90 transition-colors hover:text-[color:var(--accent)]"
+                      >
                         {u.name}
-                      </div>
+                      </button>
                       <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-white/45">
                         {u.category && <span>{u.category.toUpperCase()}</span>}
                         <span className="text-[color:var(--accent)]">
@@ -561,9 +622,14 @@ const RosterStep: React.FC<{
                   className="flex items-center gap-3.5 border border-white/[0.08] bg-white/[0.014] px-4 py-3 transition-colors hover:border-white/20"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-amsterdam text-lg font-bold uppercase leading-none text-white">
+                    <button
+                      type="button"
+                      onClick={() => setInfoHit(infoForRoster(it))}
+                      title="View datasheet"
+                      className="block max-w-full truncate text-left font-amsterdam text-lg font-bold uppercase leading-none text-white transition-colors hover:text-[color:var(--accent)]"
+                    >
                       {it.name}
-                    </div>
+                    </button>
                     <div className="mt-1 font-mono text-[10px] text-white/45">
                       {it.allyFamily && (
                         <span className="text-[color:var(--accent)]">
@@ -784,6 +850,10 @@ const RosterStep: React.FC<{
           />
         );
       })()}
+
+      {infoHit && (
+        <DatasheetModal hit={infoHit} onClose={() => setInfoHit(null)} />
+      )}
     </>
   );
 };
