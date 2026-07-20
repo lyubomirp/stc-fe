@@ -9,6 +9,7 @@ import type { Ability } from "@/app/types/Ability";
 import type { DetachmentRef } from "@/app/types/DetachmentRef";
 
 const SCALES = [
+  { id: "patrol", name: "Combat Patrol", pts: 500 },
   { id: "incursion", name: "Incursion", pts: 1000 },
   { id: "strike", name: "Strike Force", pts: 2000 },
   { id: "onslaught", name: "Onslaught", pts: 3000 },
@@ -37,6 +38,12 @@ const DetachmentStep: React.FC<{
   onSelect,
   onContinue,
 }) => {
+  // Custom mode is tracked explicitly: a custom value can coincide with a named
+  // one, so it cannot be derived from `cap` alone.
+  const [custom, setCustom] = React.useState(
+    () => !SCALES.some((s) => s.pts === cap),
+  );
+
   // Boarding Actions is a separate game mode.
   const standard = detachments.filter((d) => d.type === null);
 
@@ -67,12 +74,15 @@ const DetachmentStep: React.FC<{
           </div>
           <div className="flex flex-col gap-2">
             {SCALES.map((s) => {
-              const on = cap === s.pts;
+              const on = !custom && cap === s.pts;
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => onCap(s.pts)}
+                  onClick={() => {
+                    setCustom(false);
+                    onCap(s.pts);
+                  }}
                   style={
                     on
                       ? {
@@ -101,6 +111,54 @@ const DetachmentStep: React.FC<{
                 </button>
               );
             })}
+
+            <button
+              type="button"
+              onClick={() => setCustom(true)}
+              style={
+                custom
+                  ? {
+                      borderColor: "var(--accent)",
+                      backgroundImage: `linear-gradient(135deg, ${accentFade(16)}, rgba(255,255,255,0.01))`,
+                      boxShadow: `0 0 16px ${accentFade(25)}`,
+                    }
+                  : undefined
+              }
+              className={
+                "flex w-full items-center justify-between border p-3 text-sm font-semibold transition-colors " +
+                (custom
+                  ? "text-white"
+                  : "border-white/[0.09] bg-white/[0.014] text-white/70 hover:border-white/25 hover:text-white")
+              }
+            >
+              <span>Custom</span>
+              <span
+                className={
+                  "font-mono text-[10px] " +
+                  (custom ? "text-[color:var(--accent)]" : "text-white/45")
+                }
+              >
+                SET PTS
+              </span>
+            </button>
+
+            {custom && (
+              <label className="flex items-center gap-2 border border-white/[0.09] bg-white/[0.014] p-3">
+                <input
+                  type="number"
+                  min={1}
+                  step={5}
+                  value={cap}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    onCap(Number.isFinite(n) && n > 0 ? n : 0);
+                  }}
+                  className="w-full bg-transparent text-sm font-semibold text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                  aria-label="Custom points"
+                />
+                <span className="font-mono text-[10px] text-white/45">PTS</span>
+              </label>
+            )}
           </div>
         </div>
 

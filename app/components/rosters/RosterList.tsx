@@ -10,6 +10,7 @@ import type { Faction } from "@/app/store/factionStore";
 import type { SavedRoster } from "@/app/types/SavedRoster";
 
 const SCALE: Record<number, string> = {
+  500: "Combat Patrol",
   1000: "Incursion",
   2000: "Strike Force",
   3000: "Onslaught",

@@ -50,6 +50,14 @@ const ArmyBuilder: React.FC<{
   // Awaiting the cost tiers that arrive with RosterStep's datasheets list.
   const [pendingUnits, setPendingUnits] = useState<PendingUnit[] | null>(null);
 
+  // A faction/sub-faction switch pending user confirmation, because it wipes
+  // the build.
+  const [pendingChange, setPendingChange] = useState<
+    | { kind: "faction"; faction: Faction }
+    | { kind: "subfaction"; keyword: string | null }
+    | null
+  >(null);
+
   useEffect(() => {
     if (!rosterId) return;
 
@@ -178,6 +186,43 @@ const ArmyBuilder: React.FC<{
     } finally {
       setSaving(false);
     }
+  };
+
+  // A faction/sub-faction switch invalidates the roster (unit availability),
+  // the detachment (sub-faction-gated) and its enhancements, so the whole build
+  // is wiped and the saved identity dropped -- the switch starts a fresh army.
+  const resetBuild = () => {
+    setRoster([]);
+    setDetachmentId(null);
+    setPendingUnits(null);
+    setSavedId(null);
+    setRosterName("Untitled Roster");
+    setDirty(false);
+    setSaveError(null);
+    setStep("detachment");
+  };
+
+  const applyFaction = (f: Faction) => {
+    resetBuild();
+    setFaction(f);
+  };
+
+  const applySubfaction = (keyword: string | null) => {
+    resetBuild();
+    setSubfaction(keyword);
+  };
+
+  // Confirm before wiping a non-empty list; an empty build switches silently.
+  const requestFaction = (f: Faction) => {
+    if (f.id === faction?.id) return;
+    if (roster.length) setPendingChange({ kind: "faction", faction: f });
+    else applyFaction(f);
+  };
+
+  const requestSubfaction = (keyword: string | null) => {
+    if (keyword === subfaction) return;
+    if (roster.length) setPendingChange({ kind: "subfaction", keyword });
+    else applySubfaction(keyword);
   };
 
   const accentStyle = faction
@@ -424,8 +469,8 @@ const ArmyBuilder: React.FC<{
             factions={factions}
             columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             onSelect={(f) => {
-              setFaction(f);
               setPicking(null);
+              requestFaction(f);
             }}
           />
         </PickerModal>
@@ -443,8 +488,8 @@ const ArmyBuilder: React.FC<{
                 key={s.keyword}
                 type="button"
                 onClick={() => {
-                  setSubfaction(s.keyword);
                   setPicking(null);
+                  requestSubfaction(s.keyword);
                 }}
                 className="group flex items-baseline justify-between bg-white/[0.02] p-5 text-left transition-colors hover:bg-white/[0.06]"
               >
@@ -462,14 +507,54 @@ const ArmyBuilder: React.FC<{
             <button
               type="button"
               onClick={() => {
-                setSubfaction(null);
                 setPicking(null);
+                requestSubfaction(null);
               }}
               className="mt-4 text-hud text-white/40 transition-colors hover:text-white"
             >
               CLEAR SELECTION
             </button>
           )}
+        </PickerModal>
+      )}
+
+      {pendingChange && (
+        <PickerModal
+          title="Discard your list?"
+          hint="THIS CANNOT BE UNDONE"
+          onClose={() => setPendingChange(null)}
+        >
+          <div className="max-w-md">
+            <p className="text-sm leading-relaxed text-white/70">
+              Switching{" "}
+              {pendingChange.kind === "faction" ? "faction" : "sub-faction"}{" "}
+              clears the current roster, detachment and enhancements. Your{" "}
+              <span className="font-bold text-white">{rosterTotal}-point</span>{" "}
+              list will be lost.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingChange(null)}
+                className="border border-white/20 px-5 py-2.5 font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-white transition-colors hover:bg-white/5"
+              >
+                Keep Building
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (pendingChange.kind === "faction")
+                    applyFaction(pendingChange.faction);
+                  else applySubfaction(pendingChange.keyword);
+                  setPendingChange(null);
+                }}
+                style={{ background: "var(--accent)", color: ON_ACCENT }}
+                className="px-5 py-2.5 font-amsterdam text-sm font-bold uppercase tracking-[0.1em] transition-[filter] hover:brightness-110"
+              >
+                Discard &amp; Switch
+              </button>
+            </div>
+          </div>
         </PickerModal>
       )}
     </div>
