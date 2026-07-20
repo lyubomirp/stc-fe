@@ -41,7 +41,7 @@ const Stratagems: React.FC = () => {
 
   useEffect(() => {
     if (detachments) {
-      setSelectedDetachment(detachments[0]);
+      setSelectedDetachment(detachments[0]?.id ?? "");
     }
   }, [detachments]);
 
@@ -55,8 +55,10 @@ const Stratagems: React.FC = () => {
           }
           onChange={(e) => setSelectedDetachment(e.target.value)}
         >
-          {detachments.map((detachment: any, idx: number) => (
-            <option key={idx}>{detachment}</option>
+          {detachments.map((detachment: any) => (
+            <option key={detachment.id} value={detachment.id}>
+              {detachment.name}
+            </option>
           ))}
         </select>
       )}
@@ -78,7 +80,7 @@ const Stratagems: React.FC = () => {
         {stratagems
           .filter(
             (s: any) =>
-              !s.detachment || s.detachment.includes(selectedDetachment),
+              !s.detachmentRef?.id || s.detachmentRef.id === selectedDetachment,
           )
           .map((s: any, k: number) => (
             <div
