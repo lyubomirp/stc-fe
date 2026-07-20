@@ -64,7 +64,7 @@ const DetachmentStep: React.FC<{
     <>
       <StepHeader
         title="Choose Detachment"
-        meta={`STEP 1 / 2 · ${shown.length} AVAILABLE${hidden ? ` · ${hidden} CHAPTER-LOCKED` : ""}`}
+        meta={`STEP 1 / 2 · ${shown.length} AVAILABLE${hidden ? ` · ${hidden} SUBFACTION-LOCKED` : ""}`}
       />
 
       <div className="grid items-start gap-6 xl:grid-cols-[220px_1fr_320px]">

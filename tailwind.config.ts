@@ -1,5 +1,62 @@
 import type { Config } from "tailwindcss";
 
+// Faction accents. Read at runtime by factionColors.ts to set --accent:
+// Tailwind builds classes from literal strings, so it cannot pick per faction.
+export const FACTION_COLORS = {
+  // Traitor legions
+  ec: "#e879f9",
+  we: "#ef4444",
+  dg: "#84cc16",
+  ts: "#22d3ee",
+
+  // Chaos
+  csm: "#c084fc",
+  cd: "#fb7185",
+  qt: "#f87171",
+
+  // Imperium
+  sm: "#60a5fa",
+  am: "#34d399",
+  as: "#fb923c",
+  ac: "#fbbf24",
+  adm: "#f87171",
+  gk: "#7dd3fc",
+  aoi: "#cbd5e1",
+  qi: "#a5b4fc",
+  tl: "#a1a1aa",
+
+  // Xenos
+  ae: "#a78bfa",
+  dru: "#a855f7",
+  nec: "#4ade80",
+  ork: "#facc15",
+  tau: "#5eead4",
+  tyr: "#c084fc",
+  gc: "#818cf8",
+  lov: "#f59e0b",
+
+  // Unaligned
+  un: "#a3a3a3",
+};
+
+// Space Marine chapter accents — the only sub-factions with distinct colours.
+// Read at runtime by factionColors.ts to set --accent; absent chapter = the
+// faction accent. Keys are the subfaction keyword kebab-cased.
+export const CHAPTER_COLORS = {
+  ultramarines: "#4f8ff0",
+  "blood-angels": "#f24b5c",
+  "dark-angels": "#3fae63",
+  "space-wolves": "#93b3cc",
+  "black-templars": "#e6e1d1",
+  deathwatch: "#c3ccd4",
+  "imperial-fists": "#f7c33a",
+  "blood-ravens": "#cf5a5f",
+  "iron-hands": "#8593a1",
+  "raven-guard": "#aab0b7",
+  salamanders: "#2ecf82",
+  "white-scars": "#dde2e7",
+};
+
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,6 +65,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        faction: FACTION_COLORS,
+        chapter: CHAPTER_COLORS,
+      },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":

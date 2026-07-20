@@ -29,6 +29,47 @@ const OUT = path.join("app", "data", "detachmentSubfactions.ts");
 
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
+// Some factions are one shared library whose detachments are NOT gated per
+// sub-faction catalogue (as SM chapters are) -- every non-Drukhari Aeldari
+// detachment is available to any Aeldari army. The sub-faction each one belongs
+// to is instead the keyword its rules buff (e.g. Ghosts of the Webway buffs
+// "Harlequins"). Classify those detachments by that keyword; default otherwise.
+const KEYWORD_LIBRARIES = {
+  "Aeldari - Aeldari Library": {
+    group: "Detachments",
+    // Detachments gated to this catalogue are that faction's own, not a
+    // sub-faction of the library owner -- skip them.
+    exclude: "Drukhari",
+    keywords: ["Harlequins", "Ynnari"],
+    fallback: "Asuryani",
+  },
+};
+
+// Gather rule/description text under an entry (XML and JSON shapes), lowercased,
+// so a detachment can be classified by the keyword it buffs.
+const collectText = (node, out) => {
+  if (node == null) return;
+  if (Array.isArray(node)) {
+    for (const v of node) collectText(v, out);
+    return;
+  }
+  if (typeof node !== "object") return;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === "description" && typeof v === "string") out.push(v);
+    else if (k === "#text" && typeof v === "string") out.push(v);
+    else collectText(v, out);
+  }
+};
+
+const entryText = (e) => {
+  const out = [];
+  collectText(e, out);
+  return out.join(" ").toLowerCase();
+};
+
+const countKeyword = (text, kw) =>
+  (text.match(new RegExp(kw.toLowerCase(), "g")) || []).length;
+
 // Name is the only join to Wahapedia; keep in step with the emitted norm below.
 const norm = (s) =>
   s
@@ -77,7 +118,8 @@ function parseCatalogue(name, raw) {
         name: g.name,
         entries: arr(g.selectionEntries).map((e) => ({
           name: e.name,
-          gate: gateJson(e),
+          hidden: hiddenJson(e),
+          text: entryText(e),
         })),
       })),
     };
@@ -91,33 +133,41 @@ function parseCatalogue(name, raw) {
       name: g["@_name"],
       entries: arr(g.selectionEntries?.selectionEntry).map((e) => ({
         name: e["@_name"],
-        gate: gateXml(e),
+        hidden: hiddenXml(e),
+        text: entryText(e),
       })),
     })),
   };
 }
 
-function gateJson(e) {
+// The first `hidden` modifier gated on the primary catalogue, as {type, childId}.
+// SM chapters use notInstanceOf (shown only for that chapter); Aeldari uses
+// instanceOf Drukhari (hidden for Drukhari) -- both are needed now.
+function hiddenJson(e) {
   for (const m of arr(e.modifiers)) {
     if (m.field !== "hidden" || m.value !== true) continue;
     for (const c of arr(m.conditions)) {
-      if (c.type === "notInstanceOf" && c.scope === "primary-catalogue") {
-        return c.childId;
+      if (
+        (c.type === "notInstanceOf" || c.type === "instanceOf") &&
+        c.scope === "primary-catalogue"
+      ) {
+        return { type: c.type, childId: c.childId };
       }
     }
   }
   return null;
 }
 
-function gateXml(e) {
+function hiddenXml(e) {
   for (const m of arr(e.modifiers?.modifier)) {
     if (m["@_field"] !== "hidden" || String(m["@_value"]) !== "true") continue;
     for (const c of arr(m.conditions?.condition)) {
+      const type = c["@_type"];
       if (
-        c["@_type"] === "notInstanceOf" &&
+        (type === "notInstanceOf" || type === "instanceOf") &&
         c["@_scope"] === "primary-catalogue"
       ) {
-        return c["@_childId"];
+        return { type, childId: c["@_childId"] };
       }
     }
   }
@@ -145,6 +195,8 @@ const main = async () => {
   let gated = 0;
   let generic = 0;
 
+  // Per-catalogue gating: each detachment is hidden unless the primary catalogue
+  // is its owner (SM chapters).
   for (const cat of parsed) {
     const group = cat.groups.find((g) => g.name === "Detachment");
     if (!group) continue;
@@ -152,20 +204,44 @@ const main = async () => {
     for (const e of group.entries) {
       if (!e.name) continue;
 
-      if (!e.gate) {
+      const owner =
+        e.hidden?.type === "notInstanceOf" ? byId.get(e.hidden.childId) : null;
+      if (!owner) {
         generic++;
         continue;
       }
-
-      const owner = byId.get(e.gate);
-      if (!owner) continue; // gated on a catalogue we did not load
 
       map[norm(e.name)] = label(owner);
       gated++;
     }
   }
 
-  console.log(`detachments: ${gated} chapter-gated, ${generic} generic`);
+  // Keyword-classified libraries: one shared detachment pool, sub-faction read
+  // off the keyword each detachment's rules buff.
+  for (const cat of parsed) {
+    const cfg = KEYWORD_LIBRARIES[cat.name];
+    if (!cfg) continue;
+
+    const group = cat.groups.find((g) => g.name === cfg.group);
+    if (!group) continue;
+
+    for (const e of group.entries) {
+      if (!e.name) continue;
+
+      // A detachment gated to the excluded catalogue is that faction's own.
+      const gatedOwner =
+        e.hidden?.type === "notInstanceOf" ? byId.get(e.hidden.childId) : null;
+      if (gatedOwner && label(gatedOwner) === cfg.exclude) continue;
+
+      const best = cfg.keywords
+        .map((k) => [k, countKeyword(e.text, k)])
+        .sort((a, b) => b[1] - a[1])[0];
+      map[norm(e.name)] = best && best[1] > 0 ? best[0] : cfg.fallback;
+      gated++;
+    }
+  }
+
+  console.log(`detachments: ${gated} sub-faction-gated, ${generic} generic`);
   console.log(
     `sub-factions seen: ${[...new Set(Object.values(map))].sort().join(", ")}`,
   );
@@ -178,7 +254,11 @@ const main = async () => {
 export const DETACHMENT_SUBFACTION: Record<string, string> = {
 ${Object.keys(map)
   .sort()
-  .map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(map[k])},`)
+  .map((k) => {
+    // Match prettier's quoteProps:"as-needed" -- bare identifier keys unquoted.
+    const key = /^[a-z][a-z0-9]*$/.test(k) ? k : JSON.stringify(k);
+    return `  ${key}: ${JSON.stringify(map[k])},`;
+  })
   .join("\n")}
 };
 

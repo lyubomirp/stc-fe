@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
-import { accentFade, factionColor } from "@/app/data/factionColors";
+import { accentColor, accentFade } from "@/app/data/factionColors";
 import { API } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
 import type { SavedRoster } from "@/app/types/SavedRoster";
@@ -133,7 +133,7 @@ const RosterList: React.FC<{
           <div className="flex flex-col gap-px bg-white/10">
             {list.map((r) => {
               const accent = {
-                "--accent": factionColor(r.factionId),
+                "--accent": accentColor(r.factionId, r.subfactionKeyword),
               } as React.CSSProperties;
               const over = (r.pointsAtSave ?? 0) > r.battleSize;
 

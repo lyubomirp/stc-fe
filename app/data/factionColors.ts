@@ -1,46 +1,23 @@
-// Faction accents. Read at runtime to set --accent: Tailwind builds classes
-// from literal strings, so it cannot generate these per faction.
-export const FACTION_COLORS: Record<string, string> = {
-  // Traitor legions
-  ec: "#e879f9",
-  we: "#ef4444",
-  dg: "#84cc16",
-  ts: "#22d3ee",
-
-  // Chaos
-  csm: "#c084fc",
-  cd: "#fb7185",
-  qt: "#f87171",
-
-  // Imperium
-  sm: "#60a5fa",
-  am: "#34d399",
-  as: "#fb923c",
-  ac: "#fbbf24",
-  adm: "#f87171",
-  gk: "#7dd3fc",
-  aoi: "#cbd5e1",
-  qi: "#a5b4fc",
-  tl: "#a1a1aa",
-
-  // Xenos
-  ae: "#a78bfa",
-  dru: "#a855f7",
-  nec: "#4ade80",
-  ork: "#facc15",
-  tau: "#5eead4",
-  tyr: "#c084fc",
-  gc: "#818cf8",
-  lov: "#f59e0b",
-
-  // Unaligned
-  un: "#a3a3a3",
-};
+import { CHAPTER_COLORS, FACTION_COLORS } from "@/tailwind.config";
 
 export const FALLBACK_ACCENT = "#a3a3a3";
 
+const factionKey = (factionId: string): keyof typeof FACTION_COLORS =>
+  factionId?.toLowerCase() as keyof typeof FACTION_COLORS;
+
 export const factionColor = (factionId: string): string =>
-  FACTION_COLORS[factionId?.toLowerCase()] ?? FALLBACK_ACCENT;
+  FACTION_COLORS[factionKey(factionId)] ?? FALLBACK_ACCENT;
+
+const chapterKey = (subfaction: string): keyof typeof CHAPTER_COLORS =>
+  subfaction.toLowerCase().replace(/\s+/g, "-") as keyof typeof CHAPTER_COLORS;
+
+// Faction accent, refined to the chapter colour when a sub-faction has one.
+export const accentColor = (
+  factionId: string,
+  subfaction?: string | null,
+): string =>
+  (subfaction && CHAPTER_COLORS[chapterKey(subfaction)]) ||
+  factionColor(factionId);
 
 export const accentFade = (pct: number): string =>
   `color-mix(in srgb, var(--accent) ${pct}%, transparent)`;

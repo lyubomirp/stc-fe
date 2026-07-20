@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
@@ -9,9 +9,10 @@ import FactionGrid from "@/app/components/factions/FactionGrid";
 import DetachmentStep from "@/app/components/army/steps/DetachmentStep";
 import RosterStep from "@/app/components/army/steps/RosterStep";
 import useFactionStore, { Faction } from "@/app/store/factionStore";
-import { accentFade, factionColor, ON_ACCENT } from "@/app/data/factionColors";
+import { accentColor, accentFade, ON_ACCENT } from "@/app/data/factionColors";
 import { factionCode } from "@/app/data/factionMeta";
 import { rosterPoints } from "@/app/data/rosterPoints";
+import { detachmentSubfaction } from "@/app/data/detachmentSubfactions";
 import { API } from "@/app/data/api";
 import type { FactionOverview } from "@/app/types/FactionOverview";
 import type { PendingUnit } from "@/app/types/PendingUnit";
@@ -122,7 +123,18 @@ const ArmyBuilder: React.FC<{
     };
   }, [faction]);
 
-  const subfactions = overview?.subfactions ?? [];
+  // A sub-faction is only offered if it owns at least one of the faction's
+  // detachments -- otherwise it does not differ enough to build differently.
+  // This drops keyword-derivation artefacts (Drukhari's leaked Asuryani/
+  // Harlequins, SM's empty Blood Ravens and the Agents-of-the-Imperium wart).
+  const subfactions = useMemo(() => {
+    const owners = new Set(
+      (overview?.detachments ?? [])
+        .map((d) => detachmentSubfaction(d.name))
+        .filter(Boolean),
+    );
+    return (overview?.subfactions ?? []).filter((s) => owners.has(s.keyword));
+  }, [overview]);
 
   const rosterTotal = rosterPoints(roster);
   const pct = Math.min(100, Math.round((rosterTotal / cap) * 100));
@@ -226,7 +238,9 @@ const ArmyBuilder: React.FC<{
   };
 
   const accentStyle = faction
-    ? ({ "--accent": factionColor(faction.id) } as React.CSSProperties)
+    ? ({
+        "--accent": accentColor(faction.id, subfaction),
+      } as React.CSSProperties)
     : undefined;
 
   return (
