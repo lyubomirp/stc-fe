@@ -3,10 +3,9 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Datasheets has no route yet: its page is pre-rewrite, so it stays inert.
 const TABS: { label: string; href?: string }[] = [
   { label: "Factions", href: "/" },
-  { label: "Datasheets" },
+  { label: "Datasheets", href: "/datasheets" },
   { label: "Army Builder", href: "/army-builder" },
   { label: "My Lists", href: "/rosters" },
 ];
