@@ -88,7 +88,7 @@ const config: Config = {
       },
       fontFamily: {
         // New Amsterdam is condensed: display sizes only.
-        amsterdam: ["New Amsterdam", "Arial", "sans-serif"],
+        amsterdam: ["var(--font-amsterdam)", "Arial", "sans-serif"],
         raleway: ["var(--font-raleway)", "system-ui", "sans-serif"],
       },
       animation: {
