@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
 import { accentColor, accentFade } from "@/app/data/factionColors";
-import { API } from "@/app/data/api";
+import { apiFetch } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
 import type { SavedRoster } from "@/app/types/SavedRoster";
 
@@ -35,6 +35,7 @@ const RosterList: React.FC<{
   const [binned, setBinned] = useState(deleted);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [binOpen, setBinOpen] = useState(false);
 
   const nameOf = (id: string) => factions.find((f) => f.id === id)?.name ?? id;
 
@@ -42,7 +43,7 @@ const RosterList: React.FC<{
     setBusy(id);
 
     try {
-      const res = await fetch(`${API}/rosters/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/rosters/${id}`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error(String(res.status));
 
       const gone = list.find((r) => r.id === id);
@@ -55,6 +56,10 @@ const RosterList: React.FC<{
           { ...gone, deletedAt: new Date().toISOString() },
           ...l,
         ]);
+        // Open the bin on a delete, or the army appears to have simply vanished:
+        // the row leaves the live list and lands in a section that is collapsed
+        // by default, with nothing on screen to say where it went.
+        setBinOpen(true);
       }
 
       router.refresh();
@@ -67,7 +72,7 @@ const RosterList: React.FC<{
     setBusy(id);
 
     try {
-      const res = await fetch(`${API}/rosters/${id}/restore`, {
+      const res = await apiFetch(`/rosters/${id}/restore`, {
         method: "POST",
       });
       if (!res.ok) throw new Error(String(res.status));
@@ -85,7 +90,7 @@ const RosterList: React.FC<{
     setBusy(id);
 
     try {
-      const res = await fetch(`${API}/rosters/${id}/permanent`, {
+      const res = await apiFetch(`/rosters/${id}/permanent`, {
         method: "DELETE",
       });
       if (!res.ok && res.status !== 204) throw new Error(String(res.status));
@@ -218,80 +223,100 @@ const RosterList: React.FC<{
 
           {binned.length > 0 && (
             <section className="mt-14">
-              <div className="mb-4 flex items-baseline gap-3 border-b border-white/[0.07] pb-3">
+              {/* Collapsed by default: this is a recovery bin, not something you
+                  came here to read, and at 50 entries it buries the live list.
+                  Note it only stops them RENDERING -- the page still fetches
+                  every deleted roster, so a real cap needs pagination on
+                  /rosters/deleted. */}
+              <button
+                type="button"
+                onClick={() => setBinOpen((o) => !o)}
+                aria-expanded={binOpen}
+                className="mb-4 flex w-full items-baseline gap-3 border-b border-white/[0.07] pb-3 text-left"
+              >
                 <h2 className="font-amsterdam text-2xl italic text-white/70">
                   Recently Deleted
                 </h2>
+                <span className="font-mono text-[11px] text-white/35">
+                  {binned.length}
+                </span>
                 <span className="font-mono text-hud text-white/35">
                   PURGED AFTER {PURGE_AFTER_DAYS} DAYS
                 </span>
-              </div>
+                <span className="ml-auto shrink-0 text-white/40">
+                  {binOpen ? "−" : "+"}
+                </span>
+              </button>
 
-              <div className="flex flex-col gap-px bg-white/[0.07]">
-                {binned.map((r) => {
-                  const left = r.deletedAt ? daysLeft(r.deletedAt) : 0;
-                  const armed = confirming === r.id;
+              {binOpen && (
+                <div className="flex flex-col gap-px bg-white/[0.07]">
+                  {binned.map((r) => {
+                    const left = r.deletedAt ? daysLeft(r.deletedAt) : 0;
+                    const armed = confirming === r.id;
 
-                  return (
-                    <div
-                      key={r.id}
-                      className="flex items-center gap-5 bg-white/[0.015] p-4 transition-colors hover:bg-white/[0.03]"
-                    >
-                      <span className="h-7 w-7 shrink-0 text-white/25">
-                        <FactionSvgResolver
-                          factionId={r.factionId}
-                          className="h-full w-full fill-current"
-                        />
-                      </span>
+                    return (
+                      <div
+                        key={r.id}
+                        className="flex items-center gap-5 bg-white/[0.015] p-4 transition-colors hover:bg-white/[0.03]"
+                      >
+                        <span className="h-7 w-7 shrink-0 text-white/25">
+                          <FactionSvgResolver
+                            factionId={r.factionId}
+                            className="h-full w-full fill-current"
+                          />
+                        </span>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-amsterdam text-lg font-bold uppercase text-white/55">
-                          {r.name}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-amsterdam text-lg font-bold uppercase text-white/55">
+                            {r.name}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 font-mono text-[10px] tracking-[0.1em] text-white/30">
+                            <span>{nameOf(r.factionId).toUpperCase()}</span>
+                            <span>
+                              {r.units.length}{" "}
+                              {r.units.length === 1 ? "UNIT" : "UNITS"}
+                            </span>
+                            <span
+                              className={left <= 3 ? "text-red-400/70" : ""}
+                            >
+                              {left === 0
+                                ? "PURGES TONIGHT"
+                                : `${left} ${left === 1 ? "DAY" : "DAYS"} LEFT`}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 font-mono text-[10px] tracking-[0.1em] text-white/30">
-                          <span>{nameOf(r.factionId).toUpperCase()}</span>
-                          <span>
-                            {r.units.length}{" "}
-                            {r.units.length === 1 ? "UNIT" : "UNITS"}
-                          </span>
-                          <span className={left <= 3 ? "text-red-400/70" : ""}>
-                            {left === 0
-                              ? "PURGES TONIGHT"
-                              : `${left} ${left === 1 ? "DAY" : "DAYS"} LEFT`}
-                          </span>
-                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => restore(r.id)}
+                          disabled={busy === r.id}
+                          className="shrink-0 border border-white/25 px-4 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white disabled:opacity-40"
+                        >
+                          {busy === r.id ? "…" : "Restore"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            armed ? purge(r.id) : setConfirming(r.id)
+                          }
+                          onBlur={() => armed && setConfirming(null)}
+                          disabled={busy === r.id}
+                          aria-label={`Permanently delete ${r.name}`}
+                          className={
+                            "shrink-0 border px-3 py-2 font-mono text-[10px] tracking-[0.1em] transition-colors disabled:opacity-40 " +
+                            (armed
+                              ? "border-red-400/60 bg-red-400/10 text-red-400"
+                              : "border-white/10 text-white/30 hover:border-red-400/40 hover:text-red-400")
+                          }
+                        >
+                          {armed ? "CONFIRM?" : "PURGE"}
+                        </button>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => restore(r.id)}
-                        disabled={busy === r.id}
-                        className="shrink-0 border border-white/25 px-4 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white disabled:opacity-40"
-                      >
-                        {busy === r.id ? "…" : "Restore"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          armed ? purge(r.id) : setConfirming(r.id)
-                        }
-                        onBlur={() => armed && setConfirming(null)}
-                        disabled={busy === r.id}
-                        aria-label={`Permanently delete ${r.name}`}
-                        className={
-                          "shrink-0 border px-3 py-2 font-mono text-[10px] tracking-[0.1em] transition-colors disabled:opacity-40 " +
-                          (armed
-                            ? "border-red-400/60 bg-red-400/10 text-red-400"
-                            : "border-white/10 text-white/30 hover:border-red-400/40 hover:text-red-400")
-                        }
-                      >
-                        {armed ? "CONFIRM?" : "PURGE"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
         </main>

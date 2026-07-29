@@ -1,18 +1,47 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "@/app/components/auth/SessionProvider";
+import { apiFetch } from "@/app/data/api";
 
-const TABS: { label: string; href?: string }[] = [
+// `gated` tabs lead somewhere the middleware bounces a signed-out visitor
+// straight back off, so showing them is an offer the app will not honour.
+const TABS: { label: string; href?: string; gated?: true }[] = [
   { label: "Factions", href: "/" },
   { label: "Datasheets", href: "/datasheets" },
-  { label: "Army Builder", href: "/army-builder" },
-  { label: "My Lists", href: "/rosters" },
+  { label: "Army Builder", href: "/army-builder", gated: true },
+  { label: "My Lists", href: "/rosters", gated: true },
 ];
 
 // Off by default: without a faction, --accent falls back to white.
 const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, known } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const signOut = async () => {
+    setSigningOut(true);
+
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } finally {
+      // Home rather than back: half the app is gated, so staying put would
+      // usually mean an immediate bounce to /login. refresh() after, because
+      // the gated pages are server-rendered and would otherwise redraw from a
+      // cache taken while the session was alive.
+      router.replace("/");
+      router.refresh();
+      setSigningOut(false);
+    }
+  };
+
+  // Held back until the session is known, so the gated tabs fade IN for a
+  // signed-in user rather than being shown and yanked away from a signed-out
+  // one. A signed-out visitor -- the case this exists for -- sees the right
+  // nav immediately and it never changes.
+  const tabs = TABS.filter((t) => !t.gated || (known && user));
 
   const activeClass = accented
     ? "border-b-2 border-[color:var(--accent)] pb-1 text-sm text-[color:var(--accent)]"
@@ -31,7 +60,7 @@ const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
       </div>
 
       <div className="flex items-center gap-8">
-        {TABS.map(({ label, href }) => {
+        {tabs.map(({ label, href }) => {
           if (!href) {
             return (
               <span key={label} className="pb-1 text-sm text-white/25">
@@ -56,7 +85,37 @@ const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
         })}
       </div>
 
-      <div className="w-24" />
+      {/* Fixed width whether or not anything renders inside it. It balances the
+          STC/LIVE-LINK block on the left, so letting it collapse for a signed-out
+          or non-admin visitor would shift the centre tabs sideways between users
+          -- the same reason the roster row reserves its LOADOUT slot. */}
+      <div className="flex w-44 items-center justify-end gap-4">
+        {user?.isAdmin &&
+          (pathname === "/admin" ? (
+            <span className="font-mono text-[11px] tracking-[0.1em] text-fuchsia-400">
+              ADMIN
+            </span>
+          ) : (
+            <Link
+              href="/admin"
+              className="font-mono text-[11px] tracking-[0.1em] text-white/40 transition-colors hover:text-white"
+            >
+              ADMIN
+            </Link>
+          ))}
+
+        {user && (
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            disabled={signingOut}
+            title={user.email}
+            className="font-mono text-[11px] tracking-[0.1em] text-white/40 transition-colors hover:text-red-400 disabled:opacity-40"
+          >
+            {signingOut ? "…" : "SIGN OUT"}
+          </button>
+        )}
+      </div>
     </nav>
   );
 };
