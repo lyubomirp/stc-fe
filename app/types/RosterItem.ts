@@ -1,4 +1,5 @@
 import type { CostTier } from "@/app/types/CostTier";
+import type { StaggerTier } from "@/app/types/StaggerTier";
 import type { WargearPick } from "@/app/types/WargearPick";
 
 // A unit as the builder holds it, keyed by a client-side `uid`: roster_units
@@ -11,7 +12,15 @@ export interface RosterItem {
   costs: CostTier[];
   costLine: string | null;
   modelCount: number;
+  // The price this copy actually pays: the base tier, or the stagger tier when
+  // repriceForStagger has decided this copy is past the threshold.
   pts: number | null;
+  // 11e staggered pricing. 0 = normal. Copies are surcharged from the
+  // staggerFrom-th onwards, so an item's price depends on its position.
+  staggerFrom: number;
+  stagger: StaggerTier[] | null;
+  // True when this copy is being charged the surcharge, so the row can say so.
+  surcharged: boolean;
   hasWargearChoices: boolean;
   isLeader: boolean;
   hasEnhancements: boolean;
