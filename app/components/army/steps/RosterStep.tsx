@@ -3,8 +3,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import StepHeader from "@/app/components/army/steps/StepHeader";
 import LoadoutModal from "@/app/components/army/LoadoutModal";
 import DatasheetModal from "@/app/components/datasheets/DatasheetModal";
+import { SkeletonRows } from "@/app/components/Skeleton";
 import { accentFade, ON_ACCENT } from "@/app/data/factionColors";
-import { rosterPoints } from "@/app/data/rosterPoints";
+import { repriceForStagger, rosterPoints } from "@/app/data/rosterPoints";
 import { API } from "@/app/data/api";
 import type { Faction } from "@/app/store/factionStore";
 import type { AttachTarget } from "@/app/types/AttachTarget";
@@ -38,6 +39,12 @@ const nearestBracket = (
   return keys.reduce((best, k) =>
     Math.abs(k - pts) < Math.abs(best - pts) ? k : best,
   );
+};
+
+const ordinal = (n: number): string => {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 };
 
 const priceByCount = (
@@ -79,16 +86,26 @@ const RosterStep: React.FC<{
   name,
   onName,
   roster,
-  onRoster,
+  onRoster: onRosterRaw,
   pendingUnits,
-  onHydrated,
+  onHydrated: onHydratedRaw,
   onSave,
   saving,
   savedId,
   dirty,
   saveError,
 }) => {
+  // Every mutation funnels through these two, so repricing here is what keeps a
+  // staggered unit's surcharge correct no matter how the roster changed --
+  // added, removed, reordered by a removal, or stepped onto another cost line.
+  const onRoster = (next: RosterItem[]) => onRosterRaw(repriceForStagger(next));
+  const onHydrated = (next: RosterItem[]) =>
+    onHydratedRaw(repriceForStagger(next));
+
   const [units, setUnits] = useState<DatasheetListItem[]>([]);
+  // Distinct from `units.length`, which cannot tell "still fetching" from
+  // "fetched and empty" -- a failed fetch used to sit on LOADING… forever.
+  const [loadingUnits, setLoadingUnits] = useState(true);
   const [families, setFamilies] = useState<AlliedFamily[] | null>(null);
   const [query, setQuery] = useState("");
   const [loadoutFor, setLoadoutFor] = useState<string | null>(null);
@@ -116,12 +133,15 @@ const RosterStep: React.FC<{
       ? `${API}/datasheets/${faction.id}?subfaction=${encodeURIComponent(subfaction)}`
       : `${API}/datasheets/${faction.id}`;
 
+    setLoadingUnits(true);
+
     fetch(url)
       .then((r) => r.json())
       .then((j: DatasheetListItem[]) => {
         if (live) setUnits([...j].sort((a, b) => a.name.localeCompare(b.name)));
       })
-      .catch(() => live && setUnits([]));
+      .catch(() => live && setUnits([]))
+      .finally(() => live && setLoadingUnits(false));
 
     // Allied families do not depend on the sub-faction; keyed on faction only.
     return () => {
@@ -175,6 +195,10 @@ const RosterStep: React.FC<{
         costLine: tier?.line ?? null,
         modelCount: tier?.models ?? p.modelCount,
         pts: tier?.pts ?? null,
+        // An ally keeps staggerFrom 0: the surcharge is the primary faction's.
+        staggerFrom: ally ? 0 : (u?.staggerFrom ?? 0),
+        stagger: ally ? null : (u?.stagger ?? null),
+        surcharged: false,
         hasWargearChoices: u?.hasWargearChoices ?? false,
         isLeader: u?.isLeader ?? false,
         hasEnhancements: u?.hasEnhancements ?? false,
@@ -221,6 +245,9 @@ const RosterStep: React.FC<{
         costLine: first?.line ?? null,
         modelCount: first?.models ?? 1,
         pts: first?.pts ?? null,
+        staggerFrom: u.staggerFrom ?? 0,
+        stagger: u.stagger ?? null,
+        surcharged: false,
         hasWargearChoices: u.hasWargearChoices ?? false,
         isLeader: u.isLeader ?? false,
         hasEnhancements: u.hasEnhancements ?? false,
@@ -251,6 +278,9 @@ const RosterStep: React.FC<{
         costLine: first?.line ?? null,
         modelCount: first?.models ?? 1,
         pts: first?.pts ?? null,
+        staggerFrom: 0,
+        stagger: null,
+        surcharged: false,
         hasWargearChoices: false,
         isLeader: false,
         hasEnhancements: false,
@@ -316,6 +346,19 @@ const RosterStep: React.FC<{
         };
       }),
     );
+
+  // Which copy each row is, for the surcharge tooltip. Same counting order as
+  // repriceForStagger, but kept separate so pricing does not depend on it.
+  const staggerOrdinals = useMemo(() => {
+    const seen = new Map<string, number>();
+    const out = new Map<string, number>();
+    for (const it of roster) {
+      const n = (seen.get(it.datasheetId) ?? 0) + 1;
+      seen.set(it.datasheetId, n);
+      out.set(it.uid, n);
+    }
+    return out;
+  }, [roster]);
 
   const total = useMemo(() => rosterPoints(roster), [roster]);
   const pct = Math.min(100, Math.round((total / cap) * 100));
@@ -477,9 +520,23 @@ const RosterStep: React.FC<{
                   >
                     {u.name}
                   </button>
-                  {u.role && (
-                    <div className="mt-0.5 font-mono text-[10px] text-white/45">
-                      {u.role}
+                  {(u.role || u.staggerFrom) && (
+                    <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-white/45">
+                      {u.role && <span>{u.role}</span>}
+                      {/* Warns before the unit is added, which is when it still
+                          costs nothing to change your mind. */}
+                      {!!u.staggerFrom && (
+                        <span
+                          title={`Your ${ordinal(u.staggerFrom)} and later copies of ${u.name} cost more: ${(
+                            u.stagger ?? []
+                          )
+                            .map((t) => `${t.models} models ${t.pts} pts`)
+                            .join(", ")}`}
+                          className="text-amber-400/70"
+                        >
+                          {ordinal(u.staggerFrom)}+ COSTS MORE
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -498,9 +555,11 @@ const RosterStep: React.FC<{
               </div>
             ))}
 
-            {!shown.length && (
+            {loadingUnits && <SkeletonRows rows={10} />}
+
+            {!loadingUnits && !shown.length && (
               <div className="py-8 text-center font-mono text-[11px] tracking-[0.1em] text-white/35">
-                {units.length ? "NO MATCHES" : "LOADING…"}
+                {units.length ? "NO MATCHES" : "COULD NOT LOAD UNITS"}
               </div>
             )}
 
@@ -723,7 +782,24 @@ const RosterStep: React.FC<{
                     </span>
                   )}
 
-                  <span className="w-20 shrink-0 text-right font-mono text-sm font-bold text-[color:var(--accent)]">
+                  {/* Amber rather than a glyph or a wider box: the columns are
+                      fixed-width so every row's points land at the same x, and
+                      the title carries the explanation the way the truncated
+                      labels do. */}
+                  <span
+                    title={
+                      it.surcharged
+                        ? `Duplicate surcharge: your ${ordinal(
+                            staggerOrdinals.get(it.uid) ?? 0,
+                          )} copy of ${it.name} costs more`
+                        : undefined
+                    }
+                    className={`w-20 shrink-0 text-right font-mono text-sm font-bold ${
+                      it.surcharged
+                        ? "text-amber-400"
+                        : "text-[color:var(--accent)]"
+                    }`}
+                  >
                     {it.pts == null ? "—" : it.pts + (it.enhancementPts ?? 0)}{" "}
                     <span className="font-normal text-white/45">PTS</span>
                   </span>

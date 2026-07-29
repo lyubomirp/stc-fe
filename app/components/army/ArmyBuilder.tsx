@@ -8,12 +8,16 @@ import PickerModal from "@/app/components/army/PickerModal";
 import FactionGrid from "@/app/components/factions/FactionGrid";
 import DetachmentStep from "@/app/components/army/steps/DetachmentStep";
 import RosterStep from "@/app/components/army/steps/RosterStep";
-import useFactionStore, { Faction } from "@/app/store/factionStore";
+import useFactionStore, {
+  Faction,
+  useFactionHydrated,
+} from "@/app/store/factionStore";
+import { SkeletonRows } from "@/app/components/Skeleton";
 import { accentColor, accentFade, ON_ACCENT } from "@/app/data/factionColors";
 import { factionCode } from "@/app/data/factionMeta";
 import { rosterPoints } from "@/app/data/rosterPoints";
 import { detachmentSubfaction } from "@/app/data/detachmentSubfactions";
-import { API } from "@/app/data/api";
+import { API, apiFetch } from "@/app/data/api";
 import type { FactionOverview } from "@/app/types/FactionOverview";
 import type { PendingUnit } from "@/app/types/PendingUnit";
 import type { RosterItem } from "@/app/types/RosterItem";
@@ -32,6 +36,7 @@ const ArmyBuilder: React.FC<{
   const router = useRouter();
   const faction = useFactionStore((s) => s.faction);
   const subfaction = useFactionStore((s) => s.subfaction);
+  const hydrated = useFactionHydrated();
   const setFaction = useFactionStore((s) => s.setFaction);
   const setSubfaction = useFactionStore((s) => s.setSubfaction);
 
@@ -64,7 +69,7 @@ const ArmyBuilder: React.FC<{
 
     let live = true;
 
-    fetch(`${API}/rosters/${rosterId}`)
+    apiFetch(`/rosters/${rosterId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((saved) => {
         if (!live) return;
@@ -149,37 +154,34 @@ const ArmyBuilder: React.FC<{
     setSaveError(null);
 
     try {
-      const res = await fetch(
-        savedId ? `${API}/rosters/${savedId}` : `${API}/rosters`,
-        {
-          method: savedId ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: rosterName,
-            factionId: faction.id,
-            subfactionKeyword: subfaction,
-            detachmentId,
-            detachmentName,
-            battleSize: cap,
-            // The API addresses attachments by index into this array: the
-            // target's row id does not exist until it has been inserted.
-            units: roster.map((r) => {
-              const at = r.attachedToUid
-                ? roster.findIndex((x) => x.uid === r.attachedToUid)
-                : -1;
+      const res = await apiFetch(savedId ? `/rosters/${savedId}` : `/rosters`, {
+        method: savedId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: rosterName,
+          factionId: faction.id,
+          subfactionKeyword: subfaction,
+          detachmentId,
+          detachmentName,
+          battleSize: cap,
+          // The API addresses attachments by index into this array: the
+          // target's row id does not exist until it has been inserted.
+          units: roster.map((r) => {
+            const at = r.attachedToUid
+              ? roster.findIndex((x) => x.uid === r.attachedToUid)
+              : -1;
 
-              return {
-                datasheetId: r.datasheetId,
-                costLine: r.costLine,
-                modelCount: r.modelCount,
-                wargear: r.wargear.length ? r.wargear : null,
-                attachedToIndex: at < 0 ? null : at,
-                enhancementId: r.enhancementId,
-              };
-            }),
+            return {
+              datasheetId: r.datasheetId,
+              costLine: r.costLine,
+              modelCount: r.modelCount,
+              wargear: r.wargear.length ? r.wargear : null,
+              attachedToIndex: at < 0 ? null : at,
+              enhancementId: r.enhancementId,
+            };
           }),
-        },
-      );
+        }),
+      });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -386,7 +388,12 @@ const ArmyBuilder: React.FC<{
           </aside>
 
           <main className="min-w-0 flex-1 overflow-y-auto px-10 pb-16 pt-8">
-            {!faction ? (
+            {!hydrated ? (
+              /* The persisted faction has not been read yet, so we do not know
+                 whether this is a returning user or a first visit. Showing
+                 either answer here would be a guess that flips a frame later. */
+              <SkeletonRows rows={10} />
+            ) : !faction ? (
               <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
                 <h1 className="font-amsterdam text-5xl italic text-white">
                   No Faction Selected
