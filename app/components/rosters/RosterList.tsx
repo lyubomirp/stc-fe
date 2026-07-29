@@ -159,9 +159,14 @@ const RosterList: React.FC<{
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-amsterdam text-card font-bold uppercase text-white">
+                    {/* The name opens the read-only view, not the builder: the
+                        common reason to open a finished list is to read it. */}
+                    <Link
+                      href={`/rosters/${r.id}`}
+                      className="block truncate font-amsterdam text-card font-bold uppercase text-white transition-colors hover:text-[color:var(--accent)]"
+                    >
                       {r.name}
-                    </div>
+                    </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.1em] text-white/45">
                       <span className="text-[color:var(--accent)]">
                         {nameOf(r.factionId).toUpperCase()}
@@ -199,6 +204,13 @@ const RosterList: React.FC<{
                       </span>
                     </div>
                   </div>
+
+                  <Link
+                    href={`/rosters/${r.id}`}
+                    className="shrink-0 border border-white/20 px-5 py-2.5 font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white"
+                  >
+                    View
+                  </Link>
 
                   <Link
                     href={`/army-builder?roster=${r.id}`}
