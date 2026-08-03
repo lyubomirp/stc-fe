@@ -1,18 +1,30 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/app/data/api";
 
 const BTN =
   "border px-5 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] transition-colors disabled:opacity-40";
 
+const remaining = (iso: string | null): number =>
+  iso ? Math.max(0, new Date(iso).getTime() - Date.now()) : 0;
+
+const countdown = (ms: number): string => {
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+};
+
 // Mint / show / revoke the guest link for one army. The token is a secret the
 // API holds, so this component never derives it -- it asks, and renders what it
-// is given.
+// is given. Same for the expiry: the TTL lives on the server and arrives as an
+// absolute timestamp, so this file has no idea how long 'a share' is.
 const ShareControl: React.FC<{
   rosterId: string;
   initialToken: string | null;
-}> = ({ rosterId, initialToken }) => {
+  initialExpiresAt: string | null;
+}> = ({ rosterId, initialToken, initialExpiresAt }) => {
   const [token, setToken] = useState(initialToken);
+  const [expiresAt, setExpiresAt] = useState(initialExpiresAt);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,9 +34,25 @@ const ShareControl: React.FC<{
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
 
+  // null until mounted: a countdown rendered on the server is wrong by the time
+  // it reaches the browser, and rendering a different number during hydration
+  // is a mismatch. Ticking every second is cheap and this window is short.
+  const [left, setLeft] = useState<number | null>(null);
+  useEffect(() => {
+    setLeft(remaining(expiresAt));
+    const t = setInterval(() => setLeft(remaining(expiresAt)), 1000);
+    return () => clearInterval(t);
+  }, [expiresAt]);
+
+  // Expired is the same as unshared as far as this control is concerned -- the
+  // link is dead either way and the only useful action is to make a new one.
+  // Before mount `left` is null, so an existing token renders as live and the
+  // countdown fills in; the API is what actually enforces this.
+  const live = Boolean(token) && (left === null || left > 0);
+
   const url = token ? `${origin}/shared/${token}` : "";
 
-  const share = async () => {
+  const share = useCallback(async () => {
     setBusy(true);
     setError(null);
 
@@ -35,14 +63,19 @@ const ShareControl: React.FC<{
 
       if (!res.ok) throw new Error(String(res.status));
 
-      const body = (await res.json()) as { token: string };
+      const body = (await res.json()) as {
+        token: string;
+        expiresAt: string;
+      };
       setToken(body.token);
+      setExpiresAt(body.expiresAt);
+      setCopied(false);
     } catch {
       setError("Could not create the link");
     } finally {
       setBusy(false);
     }
-  };
+  }, [rosterId]);
 
   const revoke = async () => {
     setBusy(true);
@@ -56,6 +89,7 @@ const ShareControl: React.FC<{
       if (!res.ok) throw new Error(String(res.status));
 
       setToken(null);
+      setExpiresAt(null);
       setCopied(false);
     } catch {
       setError("Could not revoke the link");
@@ -77,22 +111,26 @@ const ShareControl: React.FC<{
     }
   };
 
-  if (!token) {
+  if (!live) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={share}
           disabled={busy}
           className={`${BTN} border-white/25 text-white/80 hover:border-white hover:text-white`}
         >
-          {busy ? "Creating…" : "Share list"}
+          {busy ? "Creating…" : token ? "New share link" : "Share list"}
         </button>
-        {error && (
-          <span className="font-mono text-[10px] tracking-[0.1em] text-red-400">
-            {error.toUpperCase()}
-          </span>
-        )}
+        <span className="font-mono text-[10px] tracking-[0.1em] text-white/35">
+          {error ? (
+            <span className="text-red-400">{error.toUpperCase()}</span>
+          ) : token ? (
+            "THAT LINK HAS EXPIRED"
+          ) : (
+            "GUEST LINKS EXPIRE — CHECK THE COUNTDOWN AFTER SHARING"
+          )}
+        </span>
       </div>
     );
   }
@@ -115,17 +153,32 @@ const ShareControl: React.FC<{
       </button>
       <button
         type="button"
+        onClick={share}
+        disabled={busy}
+        title="Push the expiry back out; the link itself does not change"
+        className={`${BTN} border-white/15 text-white/50 hover:border-white/60 hover:text-white`}
+      >
+        {busy ? "…" : "Extend"}
+      </button>
+      <button
+        type="button"
         onClick={revoke}
         disabled={busy}
         className={`${BTN} border-white/10 text-white/40 hover:border-red-400/60 hover:text-red-400`}
       >
         {busy ? "Revoking…" : "Revoke"}
       </button>
-      <span className="font-mono text-[10px] tracking-[0.1em] text-white/35">
+      <span className="font-mono text-[10px] tracking-[0.1em]">
         {error ? (
           <span className="text-red-400">{error.toUpperCase()}</span>
         ) : (
-          "ANYONE WITH THIS LINK CAN READ THIS LIST"
+          <span
+            className={
+              left !== null && left < 120000 ? "text-red-400" : "text-white/35"
+            }
+          >
+            {left === null ? " " : `EXPIRES IN ${countdown(left)}`}
+          </span>
         )}
       </span>
     </div>

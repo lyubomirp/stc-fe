@@ -41,6 +41,7 @@ export default async function RosterViewPage({
       roster={roster}
       factions={factions}
       shareToken={roster.shareToken}
+      shareExpiresAt={roster.shareExpiresAt}
     />
   );
 }

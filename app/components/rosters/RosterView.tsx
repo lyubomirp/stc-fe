@@ -35,10 +35,17 @@ const RosterView: React.FC<{
   // Set when viewed through a share link: no nav, no edit, nothing that assumes
   // an account. The body below is identical either way.
   guest?: boolean;
-  // Owner-side only, and never passed with `guest`: the API keeps the token off
-  // the shared payload entirely, so there is nothing here to leak.
+  // Owner-side only, and never passed with `guest`: the API keeps both fields
+  // off the shared payload entirely, so there is nothing here to leak.
   shareToken?: string | null;
-}> = ({ roster, factions, guest, shareToken = null }) => {
+  shareExpiresAt?: string | null;
+}> = ({
+  roster,
+  factions,
+  guest,
+  shareToken = null,
+  shareExpiresAt = null,
+}) => {
   const [hit, setHit] = useState<DatasheetHit | null>(null);
 
   const factionName =
@@ -207,7 +214,11 @@ const RosterView: React.FC<{
               </Link>
             </div>
             <div className="mt-3">
-              <ShareControl rosterId={roster.id} initialToken={shareToken} />
+              <ShareControl
+                rosterId={roster.id}
+                initialToken={shareToken}
+                initialExpiresAt={shareExpiresAt}
+              />
             </div>
           </>
         )}

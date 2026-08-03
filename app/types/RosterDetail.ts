@@ -21,8 +21,11 @@ export interface RosterDetail {
   units: SavedUnit[];
 }
 
-// The owner's own view of the same army. `shareToken` never reaches a guest --
-// the API projects it away -- so it cannot live on RosterDetail.
+// The owner's own view of the same army. Neither share field ever reaches a
+// guest -- the API projects both away -- so they cannot live on RosterDetail.
 export interface OwnedRoster extends RosterDetail {
   shareToken: string | null;
+  // ISO. A token past this is dead; the API is the only thing that decides so,
+  // this is here to render a countdown, never to gate a fetch.
+  shareExpiresAt: string | null;
 }
