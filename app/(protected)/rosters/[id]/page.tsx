@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import RosterView from "@/app/components/rosters/RosterView";
 import { getFactions } from "@/app/data/getFactions";
 import { apiServerFetch } from "@/app/data/api";
-import type { RosterDetail } from "@/app/types/RosterDetail";
+import type { OwnedRoster } from "@/app/types/RosterDetail";
 
 // A saved list changes whenever it is saved, so this can never be cached.
 export const dynamic = "force-dynamic";
@@ -32,9 +32,15 @@ export default async function RosterViewPage({
   }
 
   const [roster, factions] = await Promise.all([
-    res.json() as Promise<RosterDetail>,
+    res.json() as Promise<OwnedRoster>,
     getFactions(),
   ]);
 
-  return <RosterView roster={roster} factions={factions} />;
+  return (
+    <RosterView
+      roster={roster}
+      factions={factions}
+      shareToken={roster.shareToken}
+    />
+  );
 }

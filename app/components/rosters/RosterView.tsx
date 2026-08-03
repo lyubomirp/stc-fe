@@ -4,6 +4,7 @@ import Link from "next/link";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
 import DatasheetModal from "@/app/components/datasheets/DatasheetModal";
+import ShareControl from "@/app/components/rosters/ShareControl";
 import { accentColor, accentFade } from "@/app/data/factionColors";
 import type { Faction } from "@/app/store/factionStore";
 import type { DatasheetHit } from "@/app/types/DatasheetHit";
@@ -34,7 +35,10 @@ const RosterView: React.FC<{
   // Set when viewed through a share link: no nav, no edit, nothing that assumes
   // an account. The body below is identical either way.
   guest?: boolean;
-}> = ({ roster, factions, guest }) => {
+  // Owner-side only, and never passed with `guest`: the API keeps the token off
+  // the shared payload entirely, so there is nothing here to leak.
+  shareToken?: string | null;
+}> = ({ roster, factions, guest, shareToken = null }) => {
   const [hit, setHit] = useState<DatasheetHit | null>(null);
 
   const factionName =
@@ -187,20 +191,25 @@ const RosterView: React.FC<{
         </div>
 
         {!guest && (
-          <div className="mt-6 flex gap-3">
-            <Link
-              href={`/army-builder?roster=${roster.id}`}
-              className="border border-white/25 px-5 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/80 transition-colors hover:border-white hover:text-white"
-            >
-              Edit list
-            </Link>
-            <Link
-              href="/rosters"
-              className="border border-white/10 px-5 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/40 transition-colors hover:text-white"
-            >
-              All lists
-            </Link>
-          </div>
+          <>
+            <div className="mt-6 flex gap-3">
+              <Link
+                href={`/army-builder?roster=${roster.id}`}
+                className="border border-white/25 px-5 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/80 transition-colors hover:border-white hover:text-white"
+              >
+                Edit list
+              </Link>
+              <Link
+                href="/rosters"
+                className="border border-white/10 px-5 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/40 transition-colors hover:text-white"
+              >
+                All lists
+              </Link>
+            </div>
+            <div className="mt-3">
+              <ShareControl rosterId={roster.id} initialToken={shareToken} />
+            </div>
+          </>
         )}
       </header>
 
