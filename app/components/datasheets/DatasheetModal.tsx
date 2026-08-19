@@ -6,6 +6,7 @@ import {
   WeaponTable,
 } from "@/app/components/datasheets/WeaponTable";
 import StatBlock from "@/app/components/datasheets/StatBlock";
+import AbilityList from "@/app/components/datasheets/AbilityList";
 import { factionColor } from "@/app/data/factionColors";
 import { API } from "@/app/data/api";
 import type { DatasheetHit } from "@/app/types/DatasheetHit";
@@ -103,13 +104,17 @@ const DatasheetModal: React.FC<{ hit: DatasheetHit; onClose: () => void }> = ({
           <>
             <StatBlock datasheetId={hit.id} />
 
+            {/* min-w-0 on both: a grid item defaults to min-width:auto, so it
+                refuses to shrink below the weapon table's min-w-[500px] and
+                pushes the whole modal wider than the screen instead of letting
+                the table's own overflow-x-auto scroll. */}
             <div
               className={
-                "grid items-start gap-8 " +
+                "grid min-w-0 items-start gap-6 sm:gap-8 " +
                 (hasLeadership ? "lg:grid-cols-[1fr_300px]" : "")
               }
             >
-              <div>
+              <div className="min-w-0">
                 {weapons.length ? (
                   <>
                     <WeaponTable label="Ranged Weapons" rows={ranged} />
@@ -120,6 +125,13 @@ const DatasheetModal: React.FC<{ hit: DatasheetHit; onClose: () => void }> = ({
                     NO WARGEAR LISTED
                   </p>
                 )}
+
+                {/* In the main column, not the 300px sidebar: even collapsed,
+                    core rules text in a narrow column is the wall the
+                    detachment panel already learned to avoid. */}
+                <div className="mt-6">
+                  <AbilityList datasheetId={hit.id} />
+                </div>
               </div>
 
               {hasLeadership && (
