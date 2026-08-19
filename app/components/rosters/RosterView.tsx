@@ -151,10 +151,10 @@ const RosterView: React.FC<{
         </div>
       )}
 
-      <header className="px-8 pb-8 pt-6">
-        <div className="flex items-start gap-5">
+      <header className="px-4 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6">
+        <div className="flex items-start gap-4 sm:gap-5">
           <span
-            className="h-14 w-14 shrink-0 text-[color:var(--accent)]"
+            className="h-11 w-11 shrink-0 text-[color:var(--accent)] sm:h-14 sm:w-14"
             style={{ filter: `drop-shadow(0 0 10px ${accentFade(50)})` }}
           >
             <FactionSvgResolver
@@ -164,7 +164,7 @@ const RosterView: React.FC<{
           </span>
 
           <div className="min-w-0 flex-1">
-            <h1 className="font-amsterdam text-5xl italic leading-none text-white">
+            <h1 className="font-amsterdam text-4xl italic leading-none text-white sm:text-5xl">
               {roster.name}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] tracking-[0.1em] text-white/45">
@@ -187,9 +187,9 @@ const RosterView: React.FC<{
             <div className="font-mono text-[9px] tracking-[0.1em] text-white/40">
               {SCALE[roster.battleSize] ?? `${roster.battleSize} PTS`}
             </div>
-            <div className="font-amsterdam text-4xl font-bold leading-none text-white">
+            <div className="font-amsterdam text-3xl font-bold leading-none text-white sm:text-4xl">
               {total ?? "—"}
-              <span className="text-lg text-white/45">
+              <span className="text-base text-white/45 sm:text-lg">
                 {" "}
                 / {roster.battleSize}
               </span>
@@ -224,7 +224,7 @@ const RosterView: React.FC<{
         )}
       </header>
 
-      <main className="px-8 pb-20">
+      <main className="px-4 pb-20 sm:px-8">
         {!roster.units.length ? (
           <div className="border border-dashed border-white/15 p-16 text-center font-mono text-xs tracking-[0.1em] text-white/40">
             THIS LIST HAS NO UNITS

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/app/components/TopNav";
 import FactionSvgResolver from "@/app/components/FactionSvgResolver";
@@ -42,6 +42,8 @@ const ArmyBuilder: React.FC<{
 
   const [overview, setOverview] = useState<FactionOverview | null>(null);
   const [picking, setPicking] = useState<"faction" | "subfaction" | null>(null);
+  // Mobile only. Above md the rail is always in flow and this is ignored.
+  const [railOpen, setRailOpen] = useState(false);
   const [step, setStep] = useState<Step>("detachment");
   const [cap, setCap] = useState(2000);
   const [detachmentId, setDetachmentId] = useState<string | null>(null);
@@ -63,6 +65,34 @@ const ArmyBuilder: React.FC<{
     | { kind: "subfaction"; keyword: string | null }
     | null
   >(null);
+
+  // A bare /army-builder means "start a new roster", so it must open empty.
+  // Everything else in the builder is local state and is already gone by the
+  // time you navigate back; the persisted faction was the lone survivor, which
+  // opened a "new" roster already half-configured. Editing (?roster=) is
+  // exempt -- the loader below sets the faction from the saved army.
+  //
+  // Gated on `hydrated` because the store reads localStorage asynchronously:
+  // clearing first would just be overwritten by the rehydration.
+  const wipedForNew = useRef(false);
+
+  useEffect(() => {
+    if (rosterId || !hydrated || wipedForNew.current) return;
+
+    wipedForNew.current = true;
+    setFaction(null);
+    setSubfaction(null);
+  }, [rosterId, hydrated, setFaction, setSubfaction]);
+
+  useEffect(() => {
+    if (!railOpen) return;
+
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setRailOpen(false);
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [railOpen]);
 
   useEffect(() => {
     if (!rosterId) return;
@@ -268,8 +298,66 @@ const ArmyBuilder: React.FC<{
           <TopNav accented={Boolean(faction)} />
         </div>
 
+        {/* The rail's job on mobile, minus the rail: which step you are on, what
+            you have spent, and a way in. Only rendered once a faction exists,
+            since an empty rail has nothing worth opening. */}
+        {faction && (
+          <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5 md:hidden">
+            <button
+              type="button"
+              onClick={() => setRailOpen(true)}
+              aria-expanded={railOpen}
+              className="flex items-center gap-2.5 text-left"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 shrink-0 text-white/60"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden
+              >
+                <path d="M3 6h18M3 12h18M3 18h18" />
+              </svg>
+              <span className="font-mono text-[9px] tracking-[0.15em] text-white/40">
+                STEP
+              </span>
+              <span className="text-sm font-semibold text-white">
+                {STEPS.find((s) => s.id === step)?.label}
+              </span>
+            </button>
+
+            <span className="shrink-0 font-mono text-xs text-white/90">
+              <span className="font-bold text-[color:var(--accent)]">
+                {rosterTotal}
+              </span>{" "}
+              / {cap}
+            </span>
+          </div>
+        )}
+
         <div className="flex min-h-0 flex-1 items-stretch">
-          <aside className="flex w-[248px] shrink-0 flex-col gap-1.5 overflow-y-auto border-r border-white/[0.07] p-5">
+          {/* Below md the rail is 248px of a 375px screen -- two thirds of the
+              viewport for navigation, leaving no room to build in. So it goes
+              off-canvas and slides in, and <main> gets the whole width. */}
+          <div
+            onClick={() => setRailOpen(false)}
+            className={
+              "fixed inset-0 z-30 bg-black/70 transition-opacity duration-200 md:hidden " +
+              (railOpen ? "opacity-100" : "pointer-events-none opacity-0")
+            }
+            aria-hidden
+          />
+
+          <aside
+            className={
+              "fixed inset-y-0 left-0 z-40 flex w-[248px] shrink-0 flex-col gap-1.5 " +
+              "overflow-y-auto border-r border-white/[0.07] bg-[#08080a] p-5 " +
+              "transition-transform duration-300 ease-out motion-reduce:transition-none " +
+              "md:static md:z-auto md:translate-x-0 md:bg-transparent " +
+              (railOpen ? "translate-x-0" : "-translate-x-full")
+            }
+          >
             <div className="mb-2 flex flex-col gap-2">
               <RailCard
                 label="FACTION"
@@ -283,7 +371,10 @@ const ArmyBuilder: React.FC<{
                     />
                   ) : undefined
                 }
-                onClick={() => setPicking("faction")}
+                onClick={() => {
+                  setPicking("faction");
+                  setRailOpen(false);
+                }}
               />
 
               {faction && subfactions.length > 1 && (
@@ -291,7 +382,10 @@ const ArmyBuilder: React.FC<{
                   label="SUB-FACTION"
                   code={subfaction ? "CHAPTER / CRAFTWORLD" : undefined}
                   name={subfaction ?? undefined}
-                  onClick={() => setPicking("subfaction")}
+                  onClick={() => {
+                    setPicking("subfaction");
+                    setRailOpen(false);
+                  }}
                 />
               )}
             </div>
@@ -308,7 +402,10 @@ const ArmyBuilder: React.FC<{
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => setStep(s.id)}
+                      onClick={() => {
+                        setStep(s.id);
+                        setRailOpen(false);
+                      }}
                       style={{
                         borderLeftColor: active
                           ? "var(--accent)"
@@ -387,7 +484,7 @@ const ArmyBuilder: React.FC<{
             )}
           </aside>
 
-          <main className="min-w-0 flex-1 overflow-y-auto px-10 pb-16 pt-8">
+          <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-16 pt-5 sm:px-10 sm:pt-8">
             {!hydrated ? (
               /* The persisted faction has not been read yet, so we do not know
                  whether this is a returning user or a first visit. Showing

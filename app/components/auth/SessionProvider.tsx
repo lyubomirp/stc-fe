@@ -56,7 +56,20 @@ export const SessionProvider: React.FC<{
   });
   const pathname = usePathname();
 
-  const clear = useCallback(() => setSession({ user: null, known: true }), []);
+  // The value of the provider ABOVE this one -- a component does not see its
+  // own context. Inside (protected) that is the root layout's provider; at the
+  // root it is the default no-op.
+  const { clear: clearOuter } = useContext(SessionContext);
+
+  // Clears the outer provider as well, because the nested one only shadows it.
+  // Sign-out navigates to `/`, which unmounts (protected) and hands the nav
+  // back to the root provider -- still holding the user it fetched earlier. It
+  // showed as ADMIN blinking back for one frame before the root's own
+  // /auth/me returned 401.
+  const clear = useCallback(() => {
+    setSession({ user: null, known: true });
+    clearOuter();
+  }, [clearOuter]);
 
   // Re-checked on navigation, not just on mount: signing in is a client-side
   // route change, and this provider lives in a layout so it never remounts.

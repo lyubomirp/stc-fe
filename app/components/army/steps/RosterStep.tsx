@@ -425,7 +425,7 @@ const RosterStep: React.FC<{
         meta={`STEP 2 / 2 · ${shown.length} UNITS AVAILABLE`}
       />
 
-      <div className="mb-6 flex items-center gap-7 border border-white/[0.09] px-6 py-4">
+      <div className="mb-6 flex items-center gap-7 border border-white/[0.09] px-4 py-4 sm:px-6">
         <div className="min-w-0 flex-1">
           <label
             htmlFor="roster-name"
@@ -438,11 +438,15 @@ const RosterStep: React.FC<{
             value={name}
             onChange={(e) => onName(e.target.value)}
             placeholder="Untitled Roster"
-            className="w-full border-b border-white/10 bg-transparent pb-1 font-amsterdam text-3xl font-bold uppercase leading-none text-white outline-none transition-colors placeholder:text-white/25 focus:border-[color:var(--accent)]"
+            className="w-full border-b border-white/10 bg-transparent pb-1 font-amsterdam text-2xl font-bold uppercase leading-none text-white outline-none transition-colors placeholder:text-white/25 focus:border-[color:var(--accent)] sm:text-3xl"
           />
         </div>
 
-        <div className="shrink-0">
+        {/* Hidden below sm: the same number is already in the mobile step bar
+            above and in the progress bar immediately below, which states it as
+            "PTS REMAINING" -- the more useful form. Here it was only clipping
+            the roster name. */}
+        <div className="hidden shrink-0 sm:block">
           <div className="mb-0.5 font-mono text-hud text-white/45">
             TOTAL VALUE
           </div>
@@ -678,9 +682,15 @@ const RosterStep: React.FC<{
               return (
                 <div
                   key={it.uid}
-                  className="flex items-center gap-3.5 border border-white/[0.08] bg-white/[0.014] px-4 py-3 transition-colors hover:border-white/20"
+                  className="flex flex-wrap items-center gap-x-3.5 gap-y-2.5 border border-white/[0.08] bg-white/[0.014] px-3 py-3 transition-colors hover:border-white/20 sm:flex-nowrap sm:px-4"
                 >
-                  <div className="min-w-0 flex-1">
+                  {/* The five columns below total ~590px of fixed width, so
+                      below sm they wrap onto three lines rather than forcing the
+                      whole page sideways: name + points, then composition, then
+                      the loadout/remove pair. `order-*` is mobile-only; above sm
+                      DOM order and the fixed widths are untouched, so the
+                      column alignment documented in NOTES still holds. */}
+                  <div className="order-1 min-w-0 flex-1 sm:order-none">
                     <button
                       type="button"
                       onClick={() => setInfoHit(infoForRoster(it))}
@@ -718,7 +728,7 @@ const RosterStep: React.FC<{
                   </div>
 
                   {it.costs.length > 1 ? (
-                    <div className="flex w-[260px] shrink-0 items-center justify-center gap-2">
+                    <div className="order-3 flex w-full shrink-0 items-center justify-center gap-2 sm:order-none sm:w-[260px]">
                       <button
                         type="button"
                         aria-label={`Smaller ${it.name}`}
@@ -777,7 +787,7 @@ const RosterStep: React.FC<{
                       </button>
                     </div>
                   ) : (
-                    <span className="w-[260px] shrink-0 truncate text-center font-mono text-[11px] text-white/45">
+                    <span className="order-3 w-full shrink-0 truncate text-center font-mono text-[11px] text-white/45 sm:order-none sm:w-[260px]">
                       {it.costs[0]?.label ?? `${it.modelCount} models`}
                     </span>
                   )}
@@ -794,7 +804,7 @@ const RosterStep: React.FC<{
                           )} copy of ${it.name} costs more`
                         : undefined
                     }
-                    className={`w-20 shrink-0 text-right font-mono text-sm font-bold ${
+                    className={`order-2 w-20 shrink-0 text-right font-mono text-sm font-bold sm:order-none ${
                       it.surcharged
                         ? "text-amber-400"
                         : "text-[color:var(--accent)]"
@@ -808,7 +818,7 @@ const RosterStep: React.FC<{
                       nothing to open -- a dead button would be a lie. The slot
                       is reserved regardless: an absent button dragged every
                       column left of it out of line with its neighbours. */}
-                  <div className="flex w-[104px] shrink-0 justify-end">
+                  <div className="order-4 ml-auto flex w-[104px] shrink-0 justify-end sm:order-none sm:ml-0">
                     {(it.hasWargearChoices ||
                       it.isLeader ||
                       it.hasEnhancements) && (
@@ -833,7 +843,7 @@ const RosterStep: React.FC<{
                   <button
                     type="button"
                     onClick={() => remove(it.uid)}
-                    className="shrink-0 border border-white/15 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] text-white/50 transition-colors hover:border-red-400/40 hover:text-red-400"
+                    className="order-5 shrink-0 border border-white/15 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] text-white/50 transition-colors hover:border-red-400/40 hover:text-red-400 sm:order-none"
                   >
                     REMOVE
                   </button>

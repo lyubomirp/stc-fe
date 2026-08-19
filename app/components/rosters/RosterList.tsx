@@ -110,17 +110,17 @@ const RosterList: React.FC<{
           <TopNav />
         </div>
 
-        <header className="px-8 pb-8 pt-6">
+        <header className="px-4 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6">
           <span className="flex items-center gap-2 text-hud text-white/40">
             <span className="h-1.5 w-1.5 rounded-full border border-white/40" />
             {list.length} {list.length === 1 ? "ARMY" : "ARMIES"} ON RECORD
           </span>
-          <h1 className="mt-3 font-amsterdam text-6xl italic text-white">
+          <h1 className="mt-3 font-amsterdam text-4xl italic text-white sm:text-6xl">
             Army Lists
           </h1>
         </header>
 
-        <main className="px-8 pb-16">
+        <main className="px-4 pb-16 sm:px-8">
           {!list.length && (
             <div className="border border-dashed border-white/15 p-16 text-center">
               <p className="mb-5 font-mono text-xs tracking-[0.1em] text-white/40">
@@ -146,50 +146,61 @@ const RosterList: React.FC<{
                 <div
                   key={r.id}
                   style={accent}
-                  className="group flex items-center gap-5 bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.05]"
+                  className="group flex flex-col gap-3 bg-white/[0.02] p-4 transition-colors hover:bg-white/[0.05] sm:flex-row sm:items-center sm:gap-5 sm:p-5"
                 >
-                  <span
-                    className="h-10 w-10 shrink-0 text-[color:var(--accent)]"
-                    style={{ filter: `drop-shadow(0 0 8px ${accentFade(50)})` }}
-                  >
-                    <FactionSvgResolver
-                      factionId={r.factionId}
-                      className="h-full w-full fill-current"
-                    />
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    {/* The name opens the read-only view, not the builder: the
-                        common reason to open a finished list is to read it. */}
-                    <Link
-                      href={`/rosters/${r.id}`}
-                      className="block truncate font-amsterdam text-card font-bold uppercase text-white transition-colors hover:text-[color:var(--accent)]"
+                  {/* THREE groups, not six siblings. Stacking six of them is
+                      what made flex-col look ragged; grouped, `column` gives a
+                      card on a phone and `row` gives the original desktop line
+                      with nothing reordered. */}
+                  <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+                    <span
+                      className="h-9 w-9 shrink-0 text-[color:var(--accent)] sm:h-10 sm:w-10"
+                      style={{
+                        filter: `drop-shadow(0 0 8px ${accentFade(50)})`,
+                      }}
                     >
-                      {r.name}
-                    </Link>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.1em] text-white/45">
-                      <span className="text-[color:var(--accent)]">
-                        {nameOf(r.factionId).toUpperCase()}
-                      </span>
-                      {r.subfactionKeyword && (
-                        <span>{r.subfactionKeyword.toUpperCase()}</span>
-                      )}
-                      {r.detachmentName && <span>{r.detachmentName}</span>}
-                      <span>
-                        {r.units.length}{" "}
-                        {r.units.length === 1 ? "UNIT" : "UNITS"}
-                      </span>
-                      <span>
-                        {new Date(r.updatedAt).toLocaleDateString()}{" "}
-                        {new Date(r.updatedAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                      <FactionSvgResolver
+                        factionId={r.factionId}
+                        className="h-full w-full fill-current"
+                      />
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      {/* The name opens the read-only view, not the builder: the
+                          common reason to open a finished list is to read it. */}
+                      <Link
+                        href={`/rosters/${r.id}`}
+                        className="block truncate font-amsterdam text-card font-bold uppercase text-white transition-colors hover:text-[color:var(--accent)]"
+                      >
+                        {r.name}
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.1em] text-white/45">
+                        <span className="text-[color:var(--accent)]">
+                          {nameOf(r.factionId).toUpperCase()}
+                        </span>
+                        {r.subfactionKeyword && (
+                          <span>{r.subfactionKeyword.toUpperCase()}</span>
+                        )}
+                        {r.detachmentName && <span>{r.detachmentName}</span>}
+                        <span>
+                          {r.units.length}{" "}
+                          {r.units.length === 1 ? "UNIT" : "UNITS"}
+                        </span>
+                        <span>
+                          {new Date(r.updatedAt).toLocaleDateString()}{" "}
+                          {new Date(r.updatedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="shrink-0 text-right">
+                  {/* Side by side on a phone, where a right-aligned stack would
+                      leave the scale label orphaned; the original stacked form
+                      returns at sm. */}
+                  <div className="flex shrink-0 items-baseline justify-between gap-3 border-t border-white/[0.06] pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
                     <div className="font-mono text-[9px] tracking-[0.1em] text-white/40">
                       {SCALE[r.battleSize] ?? `${r.battleSize} PTS`}
                     </div>
@@ -205,29 +216,33 @@ const RosterList: React.FC<{
                     </div>
                   </div>
 
-                  <Link
-                    href={`/rosters/${r.id}`}
-                    className="shrink-0 border border-white/20 px-5 py-2.5 font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white"
-                  >
-                    View
-                  </Link>
+                  {/* grid-cols-3 rather than flex: equal thirds are a better
+                      tap target than content-width buttons. */}
+                  <div className="grid grid-cols-3 gap-2 sm:flex sm:shrink-0 sm:items-center sm:gap-5">
+                    <Link
+                      href={`/rosters/${r.id}`}
+                      className="border border-white/20 px-3 py-2.5 text-center font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white sm:px-5"
+                    >
+                      View
+                    </Link>
 
-                  <Link
-                    href={`/army-builder?roster=${r.id}`}
-                    className="shrink-0 border border-[color:var(--accent)] px-5 py-2.5 font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-[color:var(--accent)] transition-colors hover:bg-[color:var(--accent)] hover:text-black"
-                  >
-                    Edit
-                  </Link>
+                    <Link
+                      href={`/army-builder?roster=${r.id}`}
+                      className="border border-[color:var(--accent)] px-3 py-2.5 text-center font-amsterdam text-sm font-bold uppercase tracking-[0.1em] text-[color:var(--accent)] transition-colors hover:bg-[color:var(--accent)] hover:text-black sm:px-5"
+                    >
+                      Edit
+                    </Link>
 
-                  <button
-                    type="button"
-                    onClick={() => remove(r.id)}
-                    disabled={busy === r.id}
-                    aria-label={`Delete ${r.name}`}
-                    className="shrink-0 border border-white/15 px-3 py-2.5 font-mono text-[10px] tracking-[0.1em] text-white/40 transition-colors hover:border-red-400/40 hover:text-red-400 disabled:opacity-40"
-                  >
-                    {busy === r.id ? "…" : "DELETE"}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(r.id)}
+                      disabled={busy === r.id}
+                      aria-label={`Delete ${r.name}`}
+                      className="border border-white/15 px-3 py-2.5 text-center font-mono text-[10px] tracking-[0.1em] text-white/40 transition-colors hover:border-red-400/40 hover:text-red-400 disabled:opacity-40"
+                    >
+                      {busy === r.id ? "…" : "DELETE"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -269,61 +284,66 @@ const RosterList: React.FC<{
                     return (
                       <div
                         key={r.id}
-                        className="flex items-center gap-5 bg-white/[0.015] p-4 transition-colors hover:bg-white/[0.03]"
+                        className="flex flex-col gap-3 bg-white/[0.015] p-4 transition-colors hover:bg-white/[0.03] sm:flex-row sm:items-center sm:gap-5"
                       >
-                        <span className="h-7 w-7 shrink-0 text-white/25">
-                          <FactionSvgResolver
-                            factionId={r.factionId}
-                            className="h-full w-full fill-current"
-                          />
-                        </span>
+                        {/* Same two-group split as the live rows above. */}
+                        <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+                          <span className="h-7 w-7 shrink-0 text-white/25">
+                            <FactionSvgResolver
+                              factionId={r.factionId}
+                              className="h-full w-full fill-current"
+                            />
+                          </span>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-amsterdam text-lg font-bold uppercase text-white/55">
-                            {r.name}
-                          </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 font-mono text-[10px] tracking-[0.1em] text-white/30">
-                            <span>{nameOf(r.factionId).toUpperCase()}</span>
-                            <span>
-                              {r.units.length}{" "}
-                              {r.units.length === 1 ? "UNIT" : "UNITS"}
-                            </span>
-                            <span
-                              className={left <= 3 ? "text-red-400/70" : ""}
-                            >
-                              {left === 0
-                                ? "PURGES TONIGHT"
-                                : `${left} ${left === 1 ? "DAY" : "DAYS"} LEFT`}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-amsterdam text-lg font-bold uppercase text-white/55">
+                              {r.name}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 font-mono text-[10px] tracking-[0.1em] text-white/30">
+                              <span>{nameOf(r.factionId).toUpperCase()}</span>
+                              <span>
+                                {r.units.length}{" "}
+                                {r.units.length === 1 ? "UNIT" : "UNITS"}
+                              </span>
+                              <span
+                                className={left <= 3 ? "text-red-400/70" : ""}
+                              >
+                                {left === 0
+                                  ? "PURGES TONIGHT"
+                                  : `${left} ${left === 1 ? "DAY" : "DAYS"} LEFT`}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => restore(r.id)}
-                          disabled={busy === r.id}
-                          className="shrink-0 border border-white/25 px-4 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white disabled:opacity-40"
-                        >
-                          {busy === r.id ? "…" : "Restore"}
-                        </button>
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center sm:gap-5">
+                          <button
+                            type="button"
+                            onClick={() => restore(r.id)}
+                            disabled={busy === r.id}
+                            className="border border-white/25 px-4 py-2 font-amsterdam text-xs font-bold uppercase tracking-[0.1em] text-white/70 transition-colors hover:border-white hover:text-white disabled:opacity-40"
+                          >
+                            {busy === r.id ? "…" : "Restore"}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            armed ? purge(r.id) : setConfirming(r.id)
-                          }
-                          onBlur={() => armed && setConfirming(null)}
-                          disabled={busy === r.id}
-                          aria-label={`Permanently delete ${r.name}`}
-                          className={
-                            "shrink-0 border px-3 py-2 font-mono text-[10px] tracking-[0.1em] transition-colors disabled:opacity-40 " +
-                            (armed
-                              ? "border-red-400/60 bg-red-400/10 text-red-400"
-                              : "border-white/10 text-white/30 hover:border-red-400/40 hover:text-red-400")
-                          }
-                        >
-                          {armed ? "CONFIRM?" : "PURGE"}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              armed ? purge(r.id) : setConfirming(r.id)
+                            }
+                            onBlur={() => armed && setConfirming(null)}
+                            disabled={busy === r.id}
+                            aria-label={`Permanently delete ${r.name}`}
+                            className={
+                              "border px-3 py-2 font-mono text-[10px] tracking-[0.1em] transition-colors disabled:opacity-40 " +
+                              (armed
+                                ? "border-red-400/60 bg-red-400/10 text-red-400"
+                                : "border-white/10 text-white/30 hover:border-red-400/40 hover:text-red-400")
+                            }
+                          >
+                            {armed ? "CONFIRM?" : "PURGE"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
