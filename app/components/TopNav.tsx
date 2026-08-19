@@ -18,7 +18,7 @@ const TABS: { label: string; href?: string; gated?: true }[] = [
 const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, known } = useSession();
+  const { user, known, clear } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -50,6 +50,11 @@ const TopNav: React.FC<{ accented?: boolean }> = ({ accented }) => {
     try {
       await apiFetch("/auth/logout", { method: "POST" });
     } finally {
+      // Before navigating: replace('/') from '/' does not change the pathname,
+      // so the provider's re-check never fires and the nav would keep showing
+      // a signed-in state.
+      clear();
+
       // Home rather than back: half the app is gated, so staying put would
       // usually mean an immediate bounce to /login. refresh() after, because
       // the gated pages are server-rendered and would otherwise redraw from a

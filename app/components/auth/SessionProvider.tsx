@@ -1,5 +1,12 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { usePathname } from "next/navigation";
 import { apiFetch } from "@/app/data/api";
 
@@ -14,9 +21,17 @@ interface Session {
   // Distinct from `user === null`: "not asked yet" is not "signed out", and
   // rendering the signed-out answer during the first is how a nav flickers.
   known: boolean;
+  // Sign-out cannot wait for the re-check below. It ends on `/`, and signing
+  // out while already there leaves the pathname unchanged, so the effect never
+  // re-fires and the nav goes on offering a session that is gone.
+  clear: () => void;
 }
 
-const SessionContext = createContext<Session>({ user: null, known: false });
+const SessionContext = createContext<Session>({
+  user: null,
+  known: false,
+  clear: () => {},
+});
 
 export const useSession = () => useContext(SessionContext);
 
@@ -35,11 +50,13 @@ export const SessionProvider: React.FC<{
   children: React.ReactNode;
   initial?: SessionUser | null;
 }> = ({ children, initial }) => {
-  const [session, setSession] = useState<Session>({
+  const [session, setSession] = useState<Omit<Session, "clear">>({
     user: initial ?? null,
     known: initial !== undefined,
   });
   const pathname = usePathname();
+
+  const clear = useCallback(() => setSession({ user: null, known: true }), []);
 
   // Re-checked on navigation, not just on mount: signing in is a client-side
   // route change, and this provider lives in a layout so it never remounts.
@@ -60,10 +77,10 @@ export const SessionProvider: React.FC<{
     };
   }, [pathname]);
 
+  const value = useMemo(() => ({ ...session, clear }), [session, clear]);
+
   return (
-    <SessionContext.Provider value={session}>
-      {children}
-    </SessionContext.Provider>
+    <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   );
 };
 
