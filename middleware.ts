@@ -4,7 +4,7 @@ const SESSION_COOKIE = "stc_session";
 
 // Gated at the edge so a signed-out visitor never renders the builder shell at
 // all. Works because the API's cookie is set on the same domain -- cookies
-// ignore ports locally, and stc.* / api-stc.* share a registrable domain in
+// ignore ports locally, and stc.* / stc-api.* share a registrable domain in
 // production, so it is visible here either way.
 //
 // This is a presence check, NOT verification: the token is signed with a secret

@@ -10,9 +10,8 @@ export default function LoginPage({
 }) {
   // Only same-site paths: taking an arbitrary ?next= would make this an open
   // redirect, handing an attacker a login link that lands on their page.
-  const raw = searchParams.next ?? "/army-builder";
-  const next =
-    raw.startsWith("/") && !raw.startsWith("//") ? raw : "/army-builder";
+  const raw = searchParams.next ?? "/";
+  const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 
   return <LoginForm next={next} />;
 }
