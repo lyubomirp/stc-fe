@@ -22,9 +22,12 @@ const invuln = (r: ModelRow): string => {
   return /\+$/.test(v) ? v : `${v}+`;
 };
 
-const CELL = "px-3 py-2 text-center font-mono text-sm text-white/80";
+// Tight on phones so the seven stat columns fit without scrolling at all;
+// the desktop spacing is unchanged above sm.
+const CELL =
+  "px-1.5 py-2 text-center font-mono text-xs text-white/80 sm:px-3 sm:text-sm";
 const HEAD =
-  "px-3 py-2 text-center font-mono text-[10px] font-normal tracking-[0.1em] text-white/40";
+  "px-1.5 py-2 text-center font-mono text-[10px] font-normal tracking-[0.1em] text-white/40 sm:px-3";
 
 // The datasheet stat line (M/T/SV/INV/W/LD/OC), one row per model profile.
 // Self-fetching so any modal can drop it in with just a datasheet id.
@@ -55,7 +58,7 @@ const StatBlock: React.FC<{ datasheetId: string }> = ({ datasheetId }) => {
       <div className="mb-2 font-mono text-hud text-white/45">STATS</div>
 
       <div className="overflow-x-auto border border-white/[0.08]">
-        <table className="w-full min-w-[440px] border-collapse text-left">
+        <table className="w-full min-w-[280px] border-collapse text-left sm:min-w-[440px]">
           <thead>
             <tr className="border-b border-white/[0.08] bg-white/[0.02]">
               {named && <th className={`${HEAD} text-left`}>MODEL</th>}
@@ -73,7 +76,9 @@ const StatBlock: React.FC<{ datasheetId: string }> = ({ datasheetId }) => {
                 className="border-b border-white/[0.05] last:border-b-0"
               >
                 {named && (
-                  <td className="px-3 py-2 text-sm text-white/80">{r.name}</td>
+                  <td className="px-1.5 py-2 text-xs text-white/80 sm:px-3 sm:text-sm">
+                    {r.name}
+                  </td>
                 )}
                 <td className={CELL}>{r.m}</td>
                 <td className={CELL}>{r.t}</td>

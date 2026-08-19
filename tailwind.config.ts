@@ -93,8 +93,14 @@ const config: Config = {
       },
       animation: {
         text: "text 0.2s ease-in-out infinite",
+        // Decelerating curve: it arrives rather than stopping dead.
+        "slide-in-right": "slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1)",
       },
       keyframes: {
+        "slide-in-right": {
+          from: { transform: "translateX(100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
         text: {
           "0%": {
             "background-size": "200% 200%",

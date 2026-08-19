@@ -48,6 +48,7 @@ const FactionPanel: React.FC<{ faction: any; onClose: () => void }> = ({
       style={{ "--accent": factionColor(faction.id) } as React.CSSProperties}
       className={
         "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-black " +
+        "animate-slide-in-right motion-reduce:animate-none " +
         "md:static md:z-auto md:w-[30%] md:shrink-0 md:border-l md:border-white/10"
       }
     >

@@ -43,7 +43,7 @@ const Stats: React.FC<{ weapon: Weapon }> = ({ weapon }) => (
       (v, j) => (
         <td
           key={j}
-          className="px-3 py-2 text-center font-mono text-sm text-white/70"
+          className="px-1.5 py-2 text-center font-mono text-xs text-white/70 sm:px-3 sm:text-sm"
         >
           {j === 0 && v && v !== "Melee" ? `${v}"` : (v ?? "—")}
         </td>
@@ -84,14 +84,14 @@ export const WeaponTable: React.FC<{ label: string; rows: WeaponGroup[] }> = ({
 
       {/* Wide content scrolls itself rather than stretching the modal. */}
       <div className="overflow-x-auto border border-white/[0.08]">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full min-w-[500px] border-collapse text-left sm:min-w-[640px]">
           <thead>
             <tr className="border-b border-white/[0.08] bg-white/[0.02]">
               {["Weapon", "Range", "A", "BS/WS", "S", "AP", "D"].map((h) => (
                 <th
                   key={h}
                   className={
-                    "px-3 py-2 font-mono text-[10px] font-normal tracking-[0.1em] text-white/40 " +
+                    "px-1.5 py-2 font-mono text-[10px] font-normal tracking-[0.1em] text-white/40 sm:px-3 " +
                     (h === "Weapon" ? "" : "w-[9%] text-center")
                   }
                 >
@@ -114,7 +114,7 @@ export const WeaponTable: React.FC<{ label: string; rows: WeaponGroup[] }> = ({
                     key={g.base}
                     className="border-b border-white/[0.05] last:border-b-0"
                   >
-                    <td className="px-3 py-2">
+                    <td className="px-1.5 py-2 sm:px-3">
                       <div className="flex items-baseline">
                         <span className="text-sm text-white/85">{g.base}</span>
                         <Cap cap={g.cap} />
@@ -131,7 +131,7 @@ export const WeaponTable: React.FC<{ label: string; rows: WeaponGroup[] }> = ({
               return (
                 <React.Fragment key={g.base}>
                   <tr className="border-b border-white/[0.05] bg-white/[0.015]">
-                    <td colSpan={7} className="px-3 pb-1 pt-2">
+                    <td colSpan={7} className="px-1.5 pb-1 pt-2 sm:px-3">
                       <div className="flex items-baseline">
                         <span className="text-sm font-semibold text-white/85">
                           {g.base}
@@ -146,7 +146,7 @@ export const WeaponTable: React.FC<{ label: string; rows: WeaponGroup[] }> = ({
                       key={`${g.base}-${profile ?? i}`}
                       className="border-b border-white/[0.05] last:border-b-0"
                     >
-                      <td className="py-2 pl-7 pr-3">
+                      <td className="py-2 pl-4 pr-1.5 sm:pl-7 sm:pr-3">
                         <div className="text-sm text-white/60">
                           {profile ?? g.base}
                         </div>

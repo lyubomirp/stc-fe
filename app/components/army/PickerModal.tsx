@@ -20,14 +20,14 @@ const PickerModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-8"
       onClick={onClose}
     >
       <div
         className="w-full max-w-6xl border border-white/10 bg-black"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-baseline justify-between border-b border-white/10 px-6 py-5">
+        <div className="flex items-baseline justify-between gap-3 border-b border-white/10 px-3 py-4 sm:px-6 sm:py-5">
           <div>
             <h2 className="font-amsterdam text-panel-title italic text-white">
               {title}
@@ -43,7 +43,9 @@ const PickerModal: React.FC<{
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        {/* Tight on phones: p-6 here plus p-8 on the overlay spent 112px of a
+            375px screen on chrome, which is what squeezed the tables. */}
+        <div className="p-3 sm:p-6">{children}</div>
       </div>
     </div>
   );
